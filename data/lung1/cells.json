@@ -7,13 +7,13 @@
 },
 {
 "id": "c4398b9076f",
-"A": "alveolar epithelial cell",
-"B": "tumor cell"
+"A": "alveolar type 2 cell",
+"B": "AT2-like tumor cell"
 },
 {
 "id": "c01bfd0ce13",
 "A": "pericyte",
-"B": "fibroblast"
+"B": "alveolar fibroblast"
 },
 {
 "id": "c949ce844e7",
@@ -22,8 +22,8 @@
 },
 {
 "id": "cef4909d2ff",
-"A": "airway epithelial cell",
-"B": "tumor cell"
+"A": "basal cell",
+"B": "mucinous tumor cell"
 },
 {
 "id": "cadd72a4a66",
@@ -32,8 +32,8 @@
 },
 {
 "id": "ce58ac2ad87",
-"A": "T cell",
-"B": "dendritic cell"
+"A": "T or NK cell",
+"B": "conventional dendritic cell type 2 (cDC2)"
 },
 {
 "id": "c6b9b72a160",
@@ -43,27 +43,27 @@
 {
 "id": "c0acaab1bee",
 "A": "lymphatic endothelial cell",
-"B": "blood endothelial cell"
+"B": "capillary endothelial cell"
 },
 {
 "id": "cdc96a1050b",
-"A": "fibroblast",
-"B": "smooth muscle cell"
+"A": "myofibroblastic cancer-associated fibroblast",
+"B": "vascular smooth muscle cell"
 },
 {
 "id": "cd4ac84da2e",
 "A": "macrophage",
-"B": "blood endothelial cell"
+"B": "venous endothelial cell"
 },
 {
 "id": "cc6777cb252",
-"A": "macrophage",
+"A": "interstitial macrophage",
 "B": "plasma cell"
 },
 {
 "id": "c008cb1051b",
 "A": "pericyte",
-"B": "blood endothelial cell"
+"B": "capillary endothelial cell"
 },
 {
 "id": "c7ad092e32a",
@@ -72,7 +72,7 @@
 },
 {
 "id": "cb1e6fe6382",
-"A": "dendritic cell",
+"A": "conventional dendritic cell type 2 (cDC2)",
 "B": "macrophage"
 },
 {
@@ -92,13 +92,13 @@
 },
 {
 "id": "caad9993fec",
-"A": "dendritic cell",
-"B": "T cell"
+"A": "conventional dendritic cell type 1 (cDC1)",
+"B": "CD4 T cell"
 },
 {
 "id": "cc2fe2e1dbd",
-"A": "airway epithelial cell",
-"B": "T cell"
+"A": "club cell",
+"B": "CD4 T cell"
 },
 {
 "id": "c65d79655b5",
@@ -107,63 +107,63 @@
 },
 {
 "id": "ccb9a534932",
-"A": "T cell",
+"A": "CD4 T cell",
 "B": "B cell"
 },
 {
 "id": "cd3197ecd6d",
 "A": "tumor cell",
-"B": "macrophage"
+"B": "interstitial macrophage"
 },
 {
 "id": "cb57edf318a",
-"A": "alveolar epithelial cell",
+"A": "KRT8+ alveolar intermediate cell",
 "B": "B cell"
 },
 {
 "id": "c6b947942cd",
-"A": "alveolar epithelial cell",
-"B": "tumor cell"
+"A": "KRT8+ alveolar intermediate cell",
+"B": "AT2-like tumor cell"
 },
 {
 "id": "cfa010d8d48",
-"A": "blood endothelial cell",
-"B": "fibroblast"
+"A": "venous endothelial cell",
+"B": "fibroblastic reticular cell"
 },
 {
 "id": "caa7e84e9d9",
-"A": "T cell",
-"B": "fibroblast"
+"A": "CD4 T cell",
+"B": "myofibroblastic cancer-associated fibroblast"
 },
 {
 "id": "c5034777024",
-"A": "fibroblast",
+"A": "cancer-associated fibroblast",
 "B": "macrophage"
 },
 {
 "id": "c135a2a4ec8",
-"A": "blood endothelial cell",
-"B": "smooth muscle cell"
+"A": "venous endothelial cell",
+"B": "vascular smooth muscle cell"
 },
 {
 "id": "cd1abca904b",
 "A": "macrophage",
-"B": "neutrophil"
+"B": "granulocyte"
 },
 {
 "id": "c02f2e49502",
 "A": "pericyte",
-"B": "fibroblast"
+"B": "adventitial fibroblast"
 },
 {
 "id": "caf3975b12d",
 "A": "macrophage",
-"B": "T cell"
+"B": "CD8 T cell"
 },
 {
 "id": "cbc7fbc0ba7",
-"A": "airway epithelial cell",
-"B": "tumor cell"
+"A": "basal cell",
+"B": "basal-like tumor cell"
 },
 {
 "id": "cebe74e64ad",
@@ -172,18 +172,18 @@
 },
 {
 "id": "c57699d26bf",
-"A": "T cell",
+"A": "cytotoxic T cell",
 "B": "macrophage"
 },
 {
 "id": "cb2a7d94cfc",
 "A": "B cell",
-"B": "T cell"
+"B": "CD8 T cell"
 },
 {
 "id": "c5029e8cb80",
 "A": "tumor cell",
-"B": "T cell"
+"B": "cytotoxic T cell"
 },
 {
 "id": "c421cdee32f",
@@ -202,7 +202,7 @@
 },
 {
 "id": "c135cf4088e",
-"A": "macrophage",
+"A": "interstitial macrophage",
 "B": "tumor cell"
 },
 {
@@ -218,37 +218,37 @@
 {
 "id": "c05229c7ef0",
 "A": "blood endothelial cell",
-"B": "fibroblast"
+"B": "myofibroblastic cancer-associated fibroblast"
 },
 {
 "id": "c8e628a211f",
-"A": "blood endothelial cell",
-"B": "fibroblast"
+"A": "venous endothelial cell",
+"B": "adventitial fibroblast"
 },
 {
 "id": "ce81d3b941c",
-"A": "blood endothelial cell",
-"B": "fibroblast"
+"A": "capillary endothelial cell",
+"B": "adventitial fibroblast"
 },
 {
 "id": "cf704e879b4",
 "A": "macrophage",
-"B": "dendritic cell"
+"B": "mature dendritic cell (mregDC)"
 },
 {
 "id": "c1cc42bef3d",
-"A": "dendritic cell",
-"B": "T cell"
+"A": "conventional dendritic cell type 2 (cDC2)",
+"B": "lymphocyte"
 },
 {
 "id": "c57f10980f4",
-"A": "fibroblast",
-"B": "blood endothelial cell"
+"A": "adventitial fibroblast",
+"B": "large-vessel endothelial cell"
 },
 {
 "id": "c6b34e32006",
 "A": "plasma cell",
-"B": "fibroblast"
+"B": "cancer-associated fibroblast"
 },
 {
 "id": "c58dd11593e",
@@ -257,28 +257,28 @@
 },
 {
 "id": "c92cd171fa5",
-"A": "fibroblast",
+"A": "cancer-associated fibroblast",
 "B": "plasma cell"
 },
 {
 "id": "cef22a2cac9",
-"A": "fibroblast",
+"A": "follicular dendritic cell",
 "B": "B cell"
 },
 {
 "id": "c75939f440b",
-"A": "T cell",
+"A": "CD4 T cell",
 "B": "plasma cell"
 },
 {
 "id": "cca7a7c50bb",
-"A": "blood endothelial cell",
+"A": "capillary endothelial cell",
 "B": "lymphatic endothelial cell"
 },
 {
 "id": "c8779cfeb53",
 "A": "tumor cell",
-"B": "airway epithelial cell"
+"B": "ciliated cell"
 },
 {
 "id": "c37628a5ae8",
@@ -287,33 +287,33 @@
 },
 {
 "id": "c445720a912",
-"A": "alveolar epithelial cell",
+"A": "alveolar type 2 cell",
 "B": "tumor cell"
 },
 {
 "id": "c792ad4646e",
 "A": "macrophage",
-"B": "T cell"
+"B": "CD4 T cell"
 },
 {
 "id": "cfbff0d7b62",
-"A": "T cell",
-"B": "fibroblast"
+"A": "CD4 T cell",
+"B": "myofibroblastic cancer-associated fibroblast"
 },
 {
 "id": "ccf217e6d8a",
-"A": "blood endothelial cell",
-"B": "fibroblast"
+"A": "venous endothelial cell",
+"B": "fibroblastic reticular cell"
 },
 {
 "id": "c83c6f9d47b",
-"A": "T cell",
+"A": "CD4 T cell",
 "B": "B cell"
 },
 {
 "id": "c0ec1d21a5f",
 "A": "neutrophil",
-"B": "dendritic cell"
+"B": "conventional dendritic cell type 2 (cDC2)"
 },
 {
 "id": "ce3ccb8a44f",
@@ -322,23 +322,23 @@
 },
 {
 "id": "c9256a98d0c",
-"A": "fibroblast",
-"B": "blood endothelial cell"
+"A": "alveolar fibroblast",
+"B": "venous endothelial cell"
 },
 {
 "id": "cded06106da",
-"A": "T cell",
-"B": "dendritic cell"
+"A": "CD8 T cell",
+"B": "conventional dendritic cell type 2 (cDC2)"
 },
 {
 "id": "c75d864f9cd",
-"A": "T cell",
+"A": "CD8 T cell",
 "B": "macrophage"
 },
 {
 "id": "c16b61b471d",
 "A": "neutrophil",
-"B": "dendritic cell"
+"B": "conventional dendritic cell type 2 (cDC2)"
 },
 {
 "id": "c7a91bbcdb5",
@@ -353,7 +353,7 @@
 {
 "id": "c347487fc9f",
 "A": "macrophage",
-"B": "fibroblast"
+"B": "cancer-associated fibroblast"
 },
 {
 "id": "c3f630e6789",
@@ -362,72 +362,72 @@
 },
 {
 "id": "c65c57618da",
-"A": "T cell",
+"A": "cytotoxic T cell",
 "B": "NK cell"
 },
 {
 "id": "c39cef81e59",
-"A": "alveolar epithelial cell",
+"A": "alveolar type 2 cell",
 "B": "tumor cell"
 },
 {
 "id": "c8afa90fe15",
 "A": "macrophage",
-"B": "dendritic cell"
+"B": "conventional dendritic cell type 2 (cDC2)"
 },
 {
 "id": "ccfc5678949",
 "A": "plasma cell",
-"B": "T cell"
+"B": "CD4 T cell"
 },
 {
 "id": "c10359395d5",
-"A": "tumor cell",
-"B": "airway epithelial cell"
+"A": "solid-pattern tumor cell",
+"B": "club cell"
 },
 {
 "id": "cf976b9444b",
-"A": "blood endothelial cell",
-"B": "fibroblast"
+"A": "capillary endothelial cell",
+"B": "adventitial fibroblast"
 },
 {
 "id": "cf19bd72d11",
-"A": "macrophage",
-"B": "fibroblast"
+"A": "tumor-associated macrophage",
+"B": "myofibroblastic cancer-associated fibroblast"
 },
 {
 "id": "cabff1598c0",
-"A": "T cell",
+"A": "CD4 T cell",
 "B": "plasma cell"
 },
 {
 "id": "c6b28803564",
-"A": "fibroblast",
+"A": "cancer-associated fibroblast",
 "B": "plasma cell"
 },
 {
 "id": "c9a0b1701ff",
 "A": "tumor cell",
-"B": "dendritic cell"
+"B": "Langerhans cell"
 },
 {
 "id": "c355900e26c",
-"A": "macrophage",
+"A": "tumor-associated macrophage",
 "B": "tumor cell"
 },
 {
 "id": "cbc9a5f98a0",
 "A": "T cell",
-"B": "fibroblast"
+"B": "myofibroblastic cancer-associated fibroblast"
 },
 {
 "id": "ca3e0382234",
 "A": "B cell",
-"B": "plasma cell"
+"B": "plasmablast"
 },
 {
 "id": "caffa3d30c4",
-"A": "fibroblast",
+"A": "alveolar fibroblast",
 "B": "pericyte"
 },
 {
@@ -437,38 +437,38 @@
 },
 {
 "id": "cc7820ef400",
-"A": "fibroblast",
+"A": "myofibroblastic cancer-associated fibroblast",
 "B": "T cell"
 },
 {
 "id": "c8abe57b945",
-"A": "fibroblast",
-"B": "T cell"
+"A": "alveolar fibroblast",
+"B": "CD8 T cell"
 },
 {
 "id": "cee6e18b517",
-"A": "dendritic cell",
-"B": "alveolar epithelial cell"
+"A": "mature dendritic cell (mregDC)",
+"B": "alveolar type 2 cell"
 },
 {
 "id": "c5e36f45dfa",
-"A": "blood endothelial cell",
-"B": "fibroblast"
+"A": "venous endothelial cell",
+"B": "cancer-associated fibroblast"
 },
 {
 "id": "c41afad0ce3",
-"A": "fibroblast",
-"B": "dendritic cell"
+"A": "myofibroblastic cancer-associated fibroblast",
+"B": "mature dendritic cell (mregDC)"
 },
 {
 "id": "c7a70f397ac",
-"A": "T cell",
-"B": "macrophage"
+"A": "CD4 T cell",
+"B": "alveolar macrophage"
 },
 {
 "id": "cf3e537d31c",
-"A": "T cell",
-"B": "dendritic cell"
+"A": "lymphocyte",
+"B": "conventional dendritic cell type 2 (cDC2)"
 },
 {
 "id": "c1b00b63a1c",
@@ -477,8 +477,8 @@
 },
 {
 "id": "c08f9a409f2",
-"A": "alveolar epithelial cell",
-"B": "tumor cell"
+"A": "KRT8+ alveolar intermediate cell",
+"B": "AT2-like tumor cell"
 },
 {
 "id": "cceffa78af1",
@@ -487,17 +487,17 @@
 },
 {
 "id": "cb9927f5652",
-"A": "macrophage",
-"B": "fibroblast"
+"A": "interstitial macrophage",
+"B": "myofibroblastic cancer-associated fibroblast"
 },
 {
 "id": "cbc64fb1694",
-"A": "T cell",
+"A": "cytotoxic T cell",
 "B": "tumor cell"
 },
 {
 "id": "c4fbf1069b1",
-"A": "T cell",
+"A": "CD4 T cell",
 "B": "tumor cell"
 }
 ]

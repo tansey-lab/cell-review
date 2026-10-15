@@ -14,6 +14,7 @@ const LOCAL = !(CFG.supabaseUrl && CFG.supabaseAnonKey);    // no backend config
 const st = {
   dataset: null, cells: [], idx: 0, data: null, answers: new Map(),
   mod: 'he', z: 0, hl: [], genes: [], geneSet: new Set(),
+  wv: { s: 1, x: 0, y: 0 },       // wider view: zoom factor and top-left corner of the visible part (µm)
 };
 
 // ============================================================================ backend
@@ -94,6 +95,7 @@ async function goTo(i) {
   st.data = await (await fetch(`${base()}/cells/${c.id}.json`)).json();
   if (st.cells[st.idx] !== c) return;
   st.z = st.data.planes.length ? st.data.planes[Math.floor(st.data.planes.length / 2)] : 0;
+  st.wv = { s: 1, x: 0, y: 0 };
   renderQuestion(c);
   renderVignettes();
   drawMain();
@@ -112,6 +114,7 @@ $('#vigs').addEventListener('click', (e) => {
   const v = e.target.closest('.vig'); if (!v) return;
   st.mod = v.dataset.m;
   document.querySelectorAll('.vig').forEach((el) => el.classList.toggle('active', el.dataset.m === st.mod));
+  $('#main').classList.toggle('pannable', st.mod === 'context');
   drawMain();
 });
 
@@ -135,7 +138,7 @@ async function drawMain() {
   const useZ = depthOK && +$('#zr').value > 0;
   const file = useZ ? `z${st.z}` : st.mod;
   const label = useZ ? `DAPI, focal plane ${st.z + 1} of ${d.n_planes}` : (MODS().find(([m]) => m === st.mod) || [, ''])[1];
-  $('#main-lab').textContent = label;
+  $('#main-lab').textContent = st.mod === 'context' ? `${label} · scroll to zoom, drag to move, double-click to reset` : label;
   $('#zl').textContent = useZ ? `plane ${st.z + 1} of ${d.n_planes}` : 'in-focus image';
   const cv = $('#main');
   const css = Math.min(cv.parentElement.clientWidth, cv.parentElement.clientHeight);
@@ -146,14 +149,75 @@ async function drawMain() {
   if (st.cells[st.idx] !== c) return;
   const g = cv.getContext('2d');
   g.fillStyle = '#000'; g.fillRect(0, 0, px, px);
-  if (im) g.drawImage(im, 0, 0, px, px);
-  if (st.mod !== 'context') overlay(g, px, d);
-  else {
+  if (st.mod !== 'context') {
+    if (im) g.drawImage(im, 0, 0, px, px);
+    overlay(g, px, d);
+    scaleBar(g, px, d.window[2] - d.window[0]);
+  } else {
     const w = await loadWide(c.id);
     if (st.cells[st.idx] !== c || st.mod !== 'context') return;
+    const W = d.wide.size, vw = W / st.wv.s;
+    g.fillStyle = '#000'; g.fillRect(0, 0, px, px);
+    if (im) { const f = im.width / W; g.drawImage(im, st.wv.x * f, st.wv.y * f, vw * f, vw * f, 0, 0, px, px); }
     overlayWide(g, px, d, w);
+    scaleBar(g, px, vw);
   }
 }
+
+// scale bar, bottom left: a round length close to a fifth of the view
+function scaleBar(g, px, um) {
+  const target = um / 5, nice = [0.5, 1, 2, 5, 10, 20, 50, 100, 200];
+  const L = nice.reduce((b, v) => (Math.abs(Math.log(v / target)) < Math.abs(Math.log(b / target)) ? v : b));
+  const dpr = window.devicePixelRatio || 1, len = (L / um) * px, m = 12 * dpr, x = m, y = px - m;
+  g.save();
+  g.lineCap = 'butt';
+  g.strokeStyle = 'rgba(0,0,0,0.8)'; g.lineWidth = 6 * dpr;
+  g.beginPath(); g.moveTo(x, y); g.lineTo(x + len, y); g.stroke();
+  g.strokeStyle = '#fff'; g.lineWidth = 3 * dpr;
+  g.beginPath(); g.moveTo(x, y); g.lineTo(x + len, y); g.stroke();
+  g.font = `${12 * dpr}px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif`;
+  g.textBaseline = 'bottom'; g.lineWidth = 3 * dpr; g.strokeStyle = 'rgba(0,0,0,0.8)'; g.fillStyle = '#fff';
+  const t = `${L} µm`;
+  g.strokeText(t, x, y - 6 * dpr); g.fillText(t, x, y - 6 * dpr);
+  g.restore();
+}
+
+// wider view: wheel to zoom around the pointer, drag to move, double-click to reset
+const WV_MAX = 4;   // beyond this the H&E is finer than the scan
+let wvFrame = 0;
+function redrawSoon() { if (!wvFrame) wvFrame = requestAnimationFrame(() => { wvFrame = 0; drawMain(); }); }
+function clampView() {
+  const W = st.data.wide.size, vw = W / st.wv.s;
+  st.wv.x = Math.max(0, Math.min(W - vw, st.wv.x)); st.wv.y = Math.max(0, Math.min(W - vw, st.wv.y));
+}
+function pointerUm(e) {
+  const r = $('#main').getBoundingClientRect(), vw = st.data.wide.size / st.wv.s;
+  return [st.wv.x + ((e.clientX - r.left) / r.width) * vw, st.wv.y + ((e.clientY - r.top) / r.height) * vw];
+}
+$('#main').addEventListener('wheel', (e) => {
+  if (st.mod !== 'context' || !st.data) return;
+  e.preventDefault();
+  const [ux, uy] = pointerUm(e), s0 = st.wv.s;
+  const s = Math.max(1, Math.min(WV_MAX, s0 * Math.exp(-e.deltaY * 0.002)));
+  st.wv.x = ux - (ux - st.wv.x) * (s0 / s); st.wv.y = uy - (uy - st.wv.y) * (s0 / s); st.wv.s = s;
+  clampView(); redrawSoon();
+}, { passive: false });
+let drag = null;
+$('#main').addEventListener('pointerdown', (e) => {
+  if (st.mod !== 'context' || !st.data) return;
+  drag = { x: e.clientX, y: e.clientY, vx: st.wv.x, vy: st.wv.y };
+  $('#main').setPointerCapture(e.pointerId); $('#main').classList.add('dragging');
+});
+$('#main').addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  const r = $('#main').getBoundingClientRect(), f = st.data.wide.size / st.wv.s / r.width;
+  st.wv.x = drag.vx - (e.clientX - drag.x) * f; st.wv.y = drag.vy - (e.clientY - drag.y) * f;
+  clampView(); redrawSoon();
+});
+const endDrag = () => { drag = null; $('#main').classList.remove('dragging'); };
+$('#main').addEventListener('pointerup', endDrag);
+$('#main').addEventListener('pointercancel', endDrag);
+$('#main').addEventListener('dblclick', () => { if (st.mod === 'context') { st.wv = { s: 1, x: 0, y: 0 }; drawMain(); } });
 $('#zr').oninput = () => {
   const v = +$('#zr').value;
   if (v > 0) st.z = st.data.planes[v - 1];
@@ -210,9 +274,9 @@ function loadWide(id) {
 }
 
 function overlayWide(g, px, d, w) {
-  const W = d.wide, k = px / W.size, [ox, oy] = W.offset, size = d.window[2] - d.window[0];
+  const W = d.wide, k = px / (W.size / st.wv.s), [ox, oy] = W.offset, size = d.window[2] - d.window[0];
   g.save();
-  g.setTransform(k, 0, 0, k, 0, 0);
+  g.setTransform(k, 0, 0, k, -st.wv.x * k, -st.wv.y * k);
   const lw = 1 / k;
   if (w) {
     const hl = new Map(st.hl.map((h) => [h.name, h.color]));
@@ -247,11 +311,12 @@ new ResizeObserver(() => drawMain()).observe($('#stage'));
 
 function renderQuestion(c) {
   const a = st.answers.get(c.id) || {};
-  const opts = [['A', c.A], ['B', c.B], ['neither', 'neither of these'], ['unsure', "can't tell"]];
+  const opts = [['A', c.A], ['B', c.B], ['neither', 'neither of these'], ['unsure', "can't tell"],
+    ['multiple', 'the outline covers more than one cell']];
   $('#choices').innerHTML = opts.map(([v, lab], i) => `<label class="choice${a.choice === v ? ' on' : ''}">
       <input type="radio" name="choice" value="${v}" ${a.choice === v ? 'checked' : ''}>
       <span class="k">${i + 1}</span><span class="t">${lab}</span></label>`).join('');
-  $('#other').hidden = a.choice !== 'neither';
+  otherBox(a.choice);
   $('#other').value = a.other_label || '';
   document.querySelectorAll('input[name=conf]').forEach((r) => { r.checked = +r.value === +(a.confidence || 0); });
   $('#comment').value = a.comment || '';
@@ -261,9 +326,13 @@ function renderQuestion(c) {
 $('#choices').addEventListener('change', () => {
   const v = (document.querySelector('input[name=choice]:checked') || {}).value;
   document.querySelectorAll('.choice').forEach((el) => el.classList.toggle('on', el.querySelector('input').checked));
-  $('#other').hidden = v !== 'neither';
-  if (v === 'neither') $('#other').focus();
+  otherBox(v);
+  if (v === 'neither' || v === 'multiple') $('#other').focus();
 });
+function otherBox(v) {
+  $('#other').hidden = v !== 'neither' && v !== 'multiple';
+  $('#other').placeholder = v === 'multiple' ? 'which cell types? (optional)' : 'if neither: what is it?';
+}
 
 async function save() {
   const c = st.cells[st.idx];
@@ -271,7 +340,7 @@ async function save() {
   if (!choice) { $('#save-msg').textContent = 'Pick an answer first.'; return; }
   const conf = +((document.querySelector('input[name=conf]:checked') || {}).value || 0) || null;
   const a = { cell_id: c.id, choice, option_a: c.A, option_b: c.B, confidence: conf,
-    other_label: choice === 'neither' ? $('#other').value.trim() : '', comment: $('#comment').value.trim() };
+    other_label: choice === 'neither' || choice === 'multiple' ? $('#other').value.trim() : '', comment: $('#comment').value.trim() };
   $('#save').disabled = true; $('#save-msg').textContent = 'saving…';
   try {
     await submit(a);
@@ -288,7 +357,7 @@ $('#prev').onclick = () => goTo(st.idx - 1);
 
 window.addEventListener('keydown', (e) => {
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
-  if ('1234'.includes(e.key)) { const r = document.querySelectorAll('input[name=choice]')[+e.key - 1]; if (r) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); } }
+  if ('12345'.includes(e.key)) { const r = document.querySelectorAll('input[name=choice]')[+e.key - 1]; if (r) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); } }
   else if (e.key === 'Enter') save();
   else if (e.key === 'ArrowLeft') goTo(st.idx - 1);
   else if (e.key === 'ArrowRight') goTo(st.idx + 1);
