@@ -64,6 +64,8 @@ textarea { width: 100%; resize: vertical; }
 .chip i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 .chip .x, .chip .gx { cursor: pointer; color: var(--muted); }
 #gene-input, #set-name { flex: 1; min-width: 0; }
+.help { margin: -2px 0 6px; line-height: 1.35; }
+.help b { color: var(--text); font-weight: 500; }
 #sets { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; }
 .set { border: 1px solid var(--line); border-radius: 5px; padding: 5px 6px; }
 .set-head { display: flex; align-items: center; gap: 5px; }

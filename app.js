@@ -5,7 +5,7 @@ const $ = (s) => document.querySelector(s);
 const CFG = window.REVIEW_CONFIG || {};
 const PALETTE = ['#ff3b30', '#34c759', '#ffcc00', '#0a84ff', '#ff9f0a', '#bf5af2', '#64d2ff',
   '#ff375f', '#a2f000', '#ffd1dc', '#00c7be', '#ac8e68'];
-const SETS_KEY = 'cell-review-marker-sets';
+const SETS_KEY = 'cell-review-marker-sets-' + (new URLSearchParams(location.search).get('r') || 'local');
 const UI_KEY = 'cell-review-ui';
 const params = new URLSearchParams(location.search);
 const TOKEN = params.get('r') || '';
@@ -100,7 +100,7 @@ async function goTo(i) {
   renderTable();
 }
 
-const MODS = () => [['he', 'H&E'], ['context', 'H&E, wider'], ['composite', 'stains'],
+const MODS = () => [['he', 'H&E'], ['context', 'wider view'], ['composite', 'stains'],
   ...st.data.channels.map((n, i) => [`c${i}`, n])];
 
 function renderVignettes() {
@@ -148,7 +148,11 @@ async function drawMain() {
   g.fillStyle = '#000'; g.fillRect(0, 0, px, px);
   if (im) g.drawImage(im, 0, 0, px, px);
   if (st.mod !== 'context') overlay(g, px, d);
-  else contextBox(g, px, d);
+  else {
+    const w = await loadWide(c.id);
+    if (st.cells[st.idx] !== c || st.mod !== 'context') return;
+    overlayWide(g, px, d, w);
+  }
 }
 $('#zr').oninput = () => {
   const v = +$('#zr').value;
@@ -192,11 +196,48 @@ function overlay(g, px, d) {
   g.restore();
 }
 
-function contextBox(g, px, d) {
-  // the wider H&E is centred on the window; mark where the cell window sits
-  const CONTEXT_UM = 150, [x0, , x1] = d.window, w = (x1 - x0) / CONTEXT_UM * px;
-  g.strokeStyle = '#ff4fd8'; g.lineWidth = 2;
-  g.strokeRect(px / 2 - w / 2, px / 2 - w / 2, w, w);
+// wider view: every transcript of the extended neighborhood, loaded once per cell (uint32 n, uint16 x, y in 0.01 µm, gene)
+const wideCache = new Map();
+function loadWide(id) {
+  if (!wideCache.has(id)) {
+    wideCache.set(id, fetch(`${base()}/cells/${id}.wide.bin`).then((r) => r.arrayBuffer()).then((buf) => {
+      const n = new Uint32Array(buf, 0, 1)[0];
+      return { n, x: new Uint16Array(buf, 4, n), y: new Uint16Array(buf, 4 + 2 * n, n), g: new Uint16Array(buf, 4 + 4 * n, n) };
+    }).catch(() => null));
+    if (wideCache.size > 20) wideCache.delete(wideCache.keys().next().value);
+  }
+  return wideCache.get(id);
+}
+
+function overlayWide(g, px, d, w) {
+  const W = d.wide, k = px / W.size, [ox, oy] = W.offset, size = d.window[2] - d.window[0];
+  g.save();
+  g.setTransform(k, 0, 0, k, 0, 0);
+  const lw = 1 / k;
+  if (w) {
+    const hl = new Map(st.hl.map((h) => [h.name, h.color]));
+    const col = W.genes.map((name) => hl.get(name) || null);
+    const r = Math.max(1.2, 1.8 * px / 700) / k;
+    if ($('#ov-all').checked) {
+      g.fillStyle = 'rgba(230,230,230,0.6)';
+      for (let i = 0; i < w.n; i++) if (!col[w.g[i]]) g.fillRect(w.x[i] / 100 - r / 2, w.y[i] / 100 - r / 2, r, r);
+    }
+    if ($('#ov-hl').checked || $('#ov-all').checked) {
+      for (let i = 0; i < w.n; i++) {
+        const c = col[w.g[i]]; if (!c) continue;
+        const x = w.x[i] / 100, y = w.y[i] / 100;
+        g.fillStyle = '#000'; g.fillRect(x - r - lw, y - r - lw, 2 * r + 2 * lw, 2 * r + 2 * lw);
+        g.fillStyle = c; g.fillRect(x - r, y - r, 2 * r, 2 * r);
+      }
+    }
+  }
+  if ($('#ov-outlines').checked) {
+    g.translate(ox, oy);
+    g.lineWidth = 1.5 * lw; g.strokeStyle = 'rgba(255,255,255,0.7)'; g.setLineDash([4 * lw, 3 * lw]);
+    g.strokeRect(0, 0, size, size); g.setLineDash([]);
+    g.lineWidth = 2 * lw; g.strokeStyle = '#ff4fd8'; for (const o of d.outline) g.stroke(flatPath(o));
+  }
+  g.restore();
 }
 
 ['#ov-outlines', '#ov-hl', '#ov-all'].forEach((id) => { $(id).onchange = drawMain; });
@@ -280,7 +321,22 @@ $('#gene-input').addEventListener('keydown', (e) => {
 $('#hl-clear').onclick = () => { st.hl = []; hlChanged(); };
 
 function loadSets() { try { return JSON.parse(localStorage.getItem(SETS_KEY)) || {}; } catch (e) { return {}; } }
-function saveSets(s) { try { localStorage.setItem(SETS_KEY, JSON.stringify(s)); } catch (e) { /* storage unavailable */ } renderSets(); }
+let setsTimer = null;
+function saveSets(s) {
+  try { localStorage.setItem(SETS_KEY, JSON.stringify(s)); } catch (e) { /* storage unavailable */ }
+  renderSets();
+  if (LOCAL) return;
+  clearTimeout(setsTimer);
+  setsTimer = setTimeout(() => rpc('review_save_sets', { p_token: TOKEN, p_sets: s }).catch(() => { /* kept locally; retried on next change */ }), 600);
+}
+async function pullSets() {
+  if (LOCAL) return;
+  try {
+    const s = await rpc('review_get_sets', { p_token: TOKEN });
+    if (s && typeof s === 'object') { localStorage.setItem(SETS_KEY, JSON.stringify(s)); renderSets(); }
+    else if (Object.keys(loadSets()).length) saveSets(loadSets());     // first visit with sets made before syncing
+  } catch (e) { /* offline: keep the local copy */ }
+}
 function renderSets() {
   const s = loadSets(), names = Object.keys(s).sort((a, b) => a.localeCompare(b));
   $('#sets').innerHTML = names.map((n) => `<div class="set" data-n="${encodeURIComponent(n)}">
@@ -325,16 +381,21 @@ function renderTable() {
     if (!a) { a = { gene: d.genes[gi], ctl: d.gene_category[gi].indexOf('gene') < 0, nuc: 0, cell: 0, win: 0 }; acc.set(gi, a); }
     a.win++; if (t.in_cell[i]) a.cell++; if (t.in_nuc[i]) a.nuc++;
   }
-  const aIn = Math.max(d.area_cell, 1e-6), aOut = Math.max(d.area_window - d.area_cell, 1e-6);
   let rows = [...acc.values()].filter((r) => !r.ctl);
-  for (const r of rows) { r.out = r.win - r.cell; r.ratio = (r.cell / aIn) / ((r.out + 0.5) / aOut); }
+  const dens = new Map(d.genes.map((gname, i) => [gname, d.density[i]]));
+  // vs tissue: molecules inside the cell / molecules expected in a region of that size at the tissue-wide density
+  for (const r of rows) { r.out = r.win - r.cell; r.ratio = r.cell / Math.max(dens.get(r.gene) * d.area_cell, 1e-3); }
   const nIn = rows.reduce((s, r) => s + r.cell, 0), nNuc = rows.reduce((s, r) => s + r.nuc, 0);
-  $('#tx-summary').innerHTML = `<b>${nIn}</b> gene molecules inside the outline (<b>${rows.filter((r) => r.cell).length}</b> genes), <b>${nNuc}</b> inside the nucleus.`;
+  $('#tx-summary').innerHTML = `<b>${nIn}</b> molecules inside the cell (<b>${rows.filter((r) => r.cell).length}</b> genes), <b>${nNuc}</b> inside the nucleus. Hover a column title for its meaning.`;
   const f = $('#tbl-filter').value.trim().toUpperCase();
   if (f) rows = rows.filter((r) => r.gene.includes(f));
   rows.sort((a, b) => (tbl.sort === 'gene' ? a.gene.localeCompare(b.gene) * -tbl.dir : (a[tbl.sort] - b[tbl.sort]) * tbl.dir) || b.cell - a.cell);
-  const cols = [['gene', 'gene'], ['nuc', 'in nucleus'], ['cell', 'in outline'], ['out', 'outside'], ['ratio', 'in / out']];
-  $('#tbl thead').innerHTML = '<tr>' + cols.map(([k, l]) => `<th data-k="${k}" class="${k === tbl.sort ? 'sorted' : ''}">${l}${k === tbl.sort ? (tbl.dir < 0 ? ' ▾' : ' ▴') : ''}</th>`).join('') + '</tr>';
+  const cols = [['gene', 'gene', 'gene name'],
+    ['nuc', 'nucleus', 'molecules inside the nucleus outline'],
+    ['cell', 'cell', 'molecules inside the cell outline (includes the nucleus)'],
+    ['out', 'neighborhood', 'molecules in the window around the cell, outside its outline'],
+    ['ratio', 'vs tissue', 'how many times more molecules are inside the cell than expected from the average density of this gene over the whole tissue']];
+  $('#tbl thead').innerHTML = '<tr>' + cols.map(([k, l, tip]) => `<th data-k="${k}" title="${tip}" class="${k === tbl.sort ? 'sorted' : ''}">${l}${k === tbl.sort ? (tbl.dir < 0 ? ' ▾' : ' ▴') : ''}</th>`).join('') + '</tr>';
   const hl = new Map(st.hl.map((h) => [h.name, h.color]));
   const fr = (v) => (v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2));
   $('#tbl tbody').innerHTML = rows.slice(0, 300).map((r) => `<tr data-g="${r.gene}"><td>${hl.has(r.gene) ? `<i style="background:${hl.get(r.gene)}"></i>` : ''}${r.gene}</td>
@@ -373,6 +434,7 @@ function gate(msg) { $('#gate-msg').innerHTML = msg; $('#gate').hidden = false; 
   $('#dataset').onchange = (e) => openDataset(e.target.value);
   try { if ((JSON.parse(localStorage.getItem(UI_KEY)) || {}).rightCollapsed) setRightCollapsed(true); } catch (e) { /* ignore */ }
   renderSets();
+  pullSets();
   $('#app').hidden = false;
   await openDataset((ds[0] || {}).id);
 })();

@@ -1,54 +1,69 @@
 {
 "cells": [
 {
-"id": "c3b037ad980",
-"A": "T cell",
-"B": "alveolar epithelial cell"
-},
-{
-"id": "c4fbf1069b1",
-"A": "tumour cell",
-"B": "T cell"
-},
-{
-"id": "ca61328b67b",
-"A": "T cell",
-"B": "B cell"
-},
-{
-"id": "ce81d3b941c",
-"A": "fibroblast",
-"B": "blood endothelial cell"
-},
-{
-"id": "cf47aa168ff",
-"A": "dendritic cell",
-"B": "T cell"
-},
-{
-"id": "c237ac34ccf",
-"A": "airway epithelial cell",
-"B": "tumour cell"
-},
-{
 "id": "c814c5ef38c",
 "A": "monocyte",
 "B": "neutrophil"
 },
 {
-"id": "c7c5cebe19c",
-"A": "macrophage",
+"id": "c4398b9076f",
+"A": "alveolar epithelial cell",
+"B": "tumor cell"
+},
+{
+"id": "c01bfd0ce13",
+"A": "pericyte",
+"B": "fibroblast"
+},
+{
+"id": "c949ce844e7",
+"A": "plasma cell",
+"B": "T cell"
+},
+{
+"id": "cef4909d2ff",
+"A": "airway epithelial cell",
+"B": "tumor cell"
+},
+{
+"id": "cadd72a4a66",
+"A": "B cell",
+"B": "plasma cell"
+},
+{
+"id": "ce58ac2ad87",
+"A": "T cell",
 "B": "dendritic cell"
 },
 {
-"id": "ce080273653",
-"A": "alveolar epithelial cell",
-"B": "tumour cell"
+"id": "c6b9b72a160",
+"A": "lymphatic endothelial cell",
+"B": "T cell"
 },
 {
-"id": "c4fb37d34f7",
+"id": "c0acaab1bee",
+"A": "lymphatic endothelial cell",
+"B": "blood endothelial cell"
+},
+{
+"id": "cdc96a1050b",
+"A": "fibroblast",
+"B": "smooth muscle cell"
+},
+{
+"id": "cd4ac84da2e",
 "A": "macrophage",
-"B": "T cell"
+"B": "blood endothelial cell"
+},
+{
+"id": "cc6777cb252",
+"A": "macrophage",
+"B": "plasma cell"
+},
+{
+"id": "c008cb1051b",
+"A": "pericyte",
+"B": "blood endothelial cell"
 },
 {
 "id": "c7ad092e32a",
@@ -56,279 +71,14 @@
 "B": "plasma cell"
 },
 {
-"id": "cd8a7327228",
-"A": "B cell",
-"B": "plasma cell"
-},
-{
-"id": "c903c8140d9",
-"A": "T cell",
-"B": "alveolar epithelial cell"
-},
-{
-"id": "caad9993fec",
-"A": "dendritic cell",
-"B": "T cell"
-},
-{
-"id": "c3f630e6789",
-"A": "B cell",
-"B": "T cell"
-},
-{
-"id": "c9a0b1701ff",
-"A": "tumour cell",
-"B": "dendritic cell"
-},
-{
-"id": "ccb9a534932",
-"A": "T cell",
-"B": "B cell"
-},
-{
-"id": "cb290744f2c",
-"A": "B cell",
-"B": "T cell"
-},
-{
-"id": "ce111c1c814",
-"A": "plasma cell",
-"B": "B cell"
-},
-{
-"id": "c731aee3bb0",
-"A": "fibroblast",
-"B": "macrophage"
-},
-{
-"id": "c4398b9076f",
-"A": "alveolar epithelial cell",
-"B": "tumour cell"
-},
-{
-"id": "cef528d36f8",
-"A": "T cell",
-"B": "NK cell"
-},
-{
-"id": "c7bd5cde559",
-"A": "smooth muscle cell",
-"B": "blood endothelial cell"
-},
-{
-"id": "c5029e8cb80",
-"A": "tumour cell",
-"B": "T cell"
-},
-{
-"id": "cc6777cb252",
-"A": "plasma cell",
-"B": "macrophage"
-},
-{
-"id": "c9256a98d0c",
-"A": "fibroblast",
-"B": "blood endothelial cell"
-},
-{
-"id": "c6b947942cd",
-"A": "tumour cell",
-"B": "alveolar epithelial cell"
-},
-{
-"id": "c1d17fd1720",
-"A": "T cell",
-"B": "plasma cell"
-},
-{
-"id": "cb2a7d94cfc",
-"A": "B cell",
-"B": "T cell"
-},
-{
-"id": "cbc9a5f98a0",
-"A": "fibroblast",
-"B": "T cell"
-},
-{
-"id": "c48fa830369",
-"A": "T cell",
-"B": "NK cell"
-},
-{
-"id": "cbc7fbc0ba7",
-"A": "airway epithelial cell",
-"B": "tumour cell"
-},
-{
-"id": "cef22a2cac9",
-"A": "B cell",
-"B": "fibroblast"
-},
-{
-"id": "cf2c32b4c93",
-"A": "macrophage",
-"B": "neutrophil"
-},
-{
-"id": "c58dd11593e",
-"A": "T cell",
-"B": "B cell"
-},
-{
-"id": "c8152132575",
-"A": "macrophage",
-"B": "neutrophil"
-},
-{
-"id": "c8e628a211f",
-"A": "fibroblast",
-"B": "blood endothelial cell"
-},
-{
-"id": "cda4de95ebd",
-"A": "plasma cell",
-"B": "macrophage"
-},
-{
-"id": "c31adc86c73",
-"A": "NK cell",
-"B": "T cell"
-},
-{
-"id": "cef4909d2ff",
-"A": "tumour cell",
-"B": "airway epithelial cell"
-},
-{
-"id": "cdc96a1050b",
-"A": "smooth muscle cell",
-"B": "fibroblast"
-},
-{
-"id": "c804d0ba7a6",
-"A": "T cell",
-"B": "NK cell"
-},
-{
-"id": "c421cdee32f",
-"A": "B cell",
-"B": "plasma cell"
-},
-{
-"id": "cc52ca3de8e",
-"A": "B cell",
-"B": "plasma cell"
-},
-{
-"id": "cf976b9444b",
-"A": "blood endothelial cell",
-"B": "fibroblast"
-},
-{
-"id": "c0bc04cfa6d",
-"A": "T cell",
-"B": "B cell"
-},
-{
-"id": "c792ad4646e",
-"A": "macrophage",
-"B": "T cell"
-},
-{
-"id": "c1158a57218",
-"A": "tumour cell",
-"B": "macrophage"
-},
-{
-"id": "cc873eaeaec",
-"A": "fibroblast",
-"B": "T cell"
-},
-{
-"id": "c1b00b63a1c",
-"A": "B cell",
-"B": "plasma cell"
-},
-{
-"id": "cadd72a4a66",
-"A": "plasma cell",
-"B": "B cell"
-},
-{
-"id": "c5034777024",
-"A": "fibroblast",
-"B": "macrophage"
-},
-{
-"id": "c4f5c201b2e",
-"A": "T cell",
-"B": "tumour cell"
-},
-{
-"id": "cc3912da32b",
-"A": "macrophage",
-"B": "neutrophil"
-},
-{
-"id": "cd4ac84da2e",
-"A": "blood endothelial cell",
-"B": "macrophage"
-},
-{
-"id": "caa92b4dfb5",
-"A": "airway epithelial cell",
-"B": "tumour cell"
-},
-{
-"id": "cbfbfb47427",
-"A": "B cell",
-"B": "plasma cell"
-},
-{
-"id": "cb8cb896feb",
-"A": "T cell",
-"B": "B cell"
-},
-{
-"id": "ce3ccb8a44f",
-"A": "plasma cell",
-"B": "B cell"
-},
-{
-"id": "c273c889c22",
-"A": "plasma cell",
-"B": "B cell"
-},
-{
-"id": "cd7a4a051a3",
-"A": "fibroblast",
-"B": "dendritic cell"
-},
-{
-"id": "c5b3c71fa1a",
-"A": "tumour cell",
-"B": "alveolar epithelial cell"
-},
-{
-"id": "c83c6f9d47b",
-"A": "T cell",
-"B": "B cell"
-},
-{
-"id": "c494059845a",
-"A": "mast cell",
-"B": "macrophage"
-},
-{
-"id": "c3214672e0f",
-"A": "tumour cell",
-"B": "alveolar epithelial cell"
-},
-{
-"id": "c621e2c7a76",
+"id": "cb1e6fe6382",
 "A": "dendritic cell",
 "B": "macrophage"
+},
+{
+"id": "c0afdb0a56f",
+"A": "B cell",
+"B": "plasma cell"
 },
 {
 "id": "cfcf44c98e0",
@@ -336,69 +86,189 @@
 "B": "B cell"
 },
 {
-"id": "c0afdb0a56f",
+"id": "ccaa7154efd",
 "A": "plasma cell",
 "B": "B cell"
 },
 {
-"id": "cf19bd72d11",
+"id": "caad9993fec",
+"A": "dendritic cell",
+"B": "T cell"
+},
+{
+"id": "cc2fe2e1dbd",
+"A": "airway epithelial cell",
+"B": "T cell"
+},
+{
+"id": "c65d79655b5",
 "A": "macrophage",
-"B": "fibroblast"
+"B": "plasmacytoid dendritic cell"
 },
 {
-"id": "c4cf938673c",
-"A": "blood endothelial cell",
-"B": "lymphatic endothelial cell"
+"id": "ccb9a534932",
+"A": "T cell",
+"B": "B cell"
 },
 {
-"id": "c355900e26c",
-"A": "tumour cell",
+"id": "cd3197ecd6d",
+"A": "tumor cell",
 "B": "macrophage"
 },
 {
-"id": "c75d864f9cd",
-"A": "macrophage",
-"B": "T cell"
+"id": "cb57edf318a",
+"A": "alveolar epithelial cell",
+"B": "B cell"
 },
 {
-"id": "c5097f374e3",
-"A": "T cell",
-"B": "NK cell"
+"id": "c6b947942cd",
+"A": "alveolar epithelial cell",
+"B": "tumor cell"
 },
 {
-"id": "c9ab92ca588",
+"id": "cfa010d8d48",
 "A": "blood endothelial cell",
 "B": "fibroblast"
 },
 {
-"id": "c2fc1c7ffc9",
-"A": "NK cell",
-"B": "T cell"
-},
-{
-"id": "cfbff0d7b62",
-"A": "fibroblast",
-"B": "T cell"
-},
-{
-"id": "cc7820ef400",
+"id": "caa7e84e9d9",
 "A": "T cell",
 "B": "fibroblast"
 },
 {
-"id": "c79e04f9fcd",
-"A": "T cell",
-"B": "NK cell"
+"id": "c5034777024",
+"A": "fibroblast",
+"B": "macrophage"
 },
 {
-"id": "cddf392f8e8",
+"id": "c135a2a4ec8",
+"A": "blood endothelial cell",
+"B": "smooth muscle cell"
+},
+{
+"id": "cd1abca904b",
+"A": "macrophage",
+"B": "neutrophil"
+},
+{
+"id": "c02f2e49502",
+"A": "pericyte",
+"B": "fibroblast"
+},
+{
+"id": "caf3975b12d",
+"A": "macrophage",
+"B": "T cell"
+},
+{
+"id": "cbc7fbc0ba7",
+"A": "airway epithelial cell",
+"B": "tumor cell"
+},
+{
+"id": "cebe74e64ad",
+"A": "macrophage",
+"B": "neutrophil"
+},
+{
+"id": "c57699d26bf",
+"A": "T cell",
+"B": "macrophage"
+},
+{
+"id": "cb2a7d94cfc",
+"A": "B cell",
+"B": "T cell"
+},
+{
+"id": "c5029e8cb80",
+"A": "tumor cell",
+"B": "T cell"
+},
+{
+"id": "c421cdee32f",
+"A": "plasma cell",
+"B": "B cell"
+},
+{
+"id": "cbfbfb47427",
 "A": "B cell",
 "B": "plasma cell"
 },
 {
-"id": "cc2fe2e1dbd",
+"id": "c0df9949b98",
+"A": "B cell",
+"B": "tumor cell"
+},
+{
+"id": "c135cf4088e",
+"A": "macrophage",
+"B": "tumor cell"
+},
+{
+"id": "ca8008624e9",
 "A": "T cell",
-"B": "airway epithelial cell"
+"B": "macrophage"
+},
+{
+"id": "c6b10f841a8",
+"A": "B cell",
+"B": "plasma cell"
+},
+{
+"id": "c05229c7ef0",
+"A": "blood endothelial cell",
+"B": "fibroblast"
+},
+{
+"id": "c8e628a211f",
+"A": "blood endothelial cell",
+"B": "fibroblast"
+},
+{
+"id": "ce81d3b941c",
+"A": "blood endothelial cell",
+"B": "fibroblast"
+},
+{
+"id": "cf704e879b4",
+"A": "macrophage",
+"B": "dendritic cell"
+},
+{
+"id": "c1cc42bef3d",
+"A": "dendritic cell",
+"B": "T cell"
+},
+{
+"id": "c57f10980f4",
+"A": "fibroblast",
+"B": "blood endothelial cell"
+},
+{
+"id": "c6b34e32006",
+"A": "plasma cell",
+"B": "fibroblast"
+},
+{
+"id": "c58dd11593e",
+"A": "T cell",
+"B": "B cell"
+},
+{
+"id": "c92cd171fa5",
+"A": "fibroblast",
+"B": "plasma cell"
+},
+{
+"id": "cef22a2cac9",
+"A": "fibroblast",
+"B": "B cell"
+},
+{
+"id": "c75939f440b",
+"A": "T cell",
+"B": "plasma cell"
 },
 {
 "id": "cca7a7c50bb",
@@ -406,19 +276,149 @@
 "B": "lymphatic endothelial cell"
 },
 {
-"id": "c41afad0ce3",
-"A": "fibroblast",
+"id": "c8779cfeb53",
+"A": "tumor cell",
+"B": "airway epithelial cell"
+},
+{
+"id": "c37628a5ae8",
+"A": "tumor cell",
+"B": "monocyte"
+},
+{
+"id": "c445720a912",
+"A": "alveolar epithelial cell",
+"B": "tumor cell"
+},
+{
+"id": "c792ad4646e",
+"A": "macrophage",
+"B": "T cell"
+},
+{
+"id": "cfbff0d7b62",
+"A": "T cell",
+"B": "fibroblast"
+},
+{
+"id": "ccf217e6d8a",
+"A": "blood endothelial cell",
+"B": "fibroblast"
+},
+{
+"id": "c83c6f9d47b",
+"A": "T cell",
+"B": "B cell"
+},
+{
+"id": "c0ec1d21a5f",
+"A": "neutrophil",
 "B": "dendritic cell"
 },
 {
-"id": "cd3197ecd6d",
-"A": "macrophage",
-"B": "tumour cell"
+"id": "ce3ccb8a44f",
+"A": "plasma cell",
+"B": "B cell"
 },
 {
-"id": "c157f3f7108",
+"id": "c9256a98d0c",
+"A": "fibroblast",
+"B": "blood endothelial cell"
+},
+{
+"id": "cded06106da",
+"A": "T cell",
+"B": "dendritic cell"
+},
+{
+"id": "c75d864f9cd",
 "A": "T cell",
 "B": "macrophage"
+},
+{
+"id": "c16b61b471d",
+"A": "neutrophil",
+"B": "dendritic cell"
+},
+{
+"id": "c7a91bbcdb5",
+"A": "B cell",
+"B": "plasma cell"
+},
+{
+"id": "c8465c24c58",
+"A": "B cell",
+"B": "plasma cell"
+},
+{
+"id": "c347487fc9f",
+"A": "macrophage",
+"B": "fibroblast"
+},
+{
+"id": "c3f630e6789",
+"A": "B cell",
+"B": "T cell"
+},
+{
+"id": "c65c57618da",
+"A": "T cell",
+"B": "NK cell"
+},
+{
+"id": "c39cef81e59",
+"A": "alveolar epithelial cell",
+"B": "tumor cell"
+},
+{
+"id": "c8afa90fe15",
+"A": "macrophage",
+"B": "dendritic cell"
+},
+{
+"id": "ccfc5678949",
+"A": "plasma cell",
+"B": "T cell"
+},
+{
+"id": "c10359395d5",
+"A": "tumor cell",
+"B": "airway epithelial cell"
+},
+{
+"id": "cf976b9444b",
+"A": "blood endothelial cell",
+"B": "fibroblast"
+},
+{
+"id": "cf19bd72d11",
+"A": "macrophage",
+"B": "fibroblast"
+},
+{
+"id": "cabff1598c0",
+"A": "T cell",
+"B": "plasma cell"
+},
+{
+"id": "c6b28803564",
+"A": "fibroblast",
+"B": "plasma cell"
+},
+{
+"id": "c9a0b1701ff",
+"A": "tumor cell",
+"B": "dendritic cell"
+},
+{
+"id": "c355900e26c",
+"A": "macrophage",
+"B": "tumor cell"
+},
+{
+"id": "cbc9a5f98a0",
+"A": "T cell",
+"B": "fibroblast"
 },
 {
 "id": "ca3e0382234",
@@ -426,18 +426,18 @@
 "B": "plasma cell"
 },
 {
-"id": "c92cd171fa5",
-"A": "plasma cell",
-"B": "fibroblast"
+"id": "caffa3d30c4",
+"A": "fibroblast",
+"B": "pericyte"
 },
 {
-"id": "c57f10980f4",
+"id": "c4cf938673c",
 "A": "blood endothelial cell",
-"B": "fibroblast"
+"B": "lymphatic endothelial cell"
 },
 {
-"id": "c57699d26bf",
-"A": "macrophage",
+"id": "cc7820ef400",
+"A": "fibroblast",
 "B": "T cell"
 },
 {
@@ -446,19 +446,59 @@
 "B": "T cell"
 },
 {
-"id": "c0ec1d21a5f",
-"A": "neutrophil",
+"id": "cee6e18b517",
+"A": "dendritic cell",
+"B": "alveolar epithelial cell"
+},
+{
+"id": "c5e36f45dfa",
+"A": "blood endothelial cell",
+"B": "fibroblast"
+},
+{
+"id": "c41afad0ce3",
+"A": "fibroblast",
 "B": "dendritic cell"
 },
 {
-"id": "cf84e269979",
+"id": "c7a70f397ac",
+"A": "T cell",
+"B": "macrophage"
+},
+{
+"id": "cf3e537d31c",
+"A": "T cell",
+"B": "dendritic cell"
+},
+{
+"id": "c1b00b63a1c",
+"A": "plasma cell",
+"B": "B cell"
+},
+{
+"id": "c08f9a409f2",
 "A": "alveolar epithelial cell",
-"B": "tumour cell"
+"B": "tumor cell"
+},
+{
+"id": "cceffa78af1",
+"A": "B cell",
+"B": "plasma cell"
 },
 {
 "id": "cb9927f5652",
-"A": "fibroblast",
-"B": "macrophage"
+"A": "macrophage",
+"B": "fibroblast"
+},
+{
+"id": "cbc64fb1694",
+"A": "T cell",
+"B": "tumor cell"
+},
+{
+"id": "c4fbf1069b1",
+"A": "T cell",
+"B": "tumor cell"
 }
 ]
 }
