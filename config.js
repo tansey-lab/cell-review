@@ -1,0 +1,8 @@
+// Leave empty to run in local test mode (answers kept in this browser).
+window.REVIEW_CONFIG = {
+  supabaseUrl: 'https://hwcehyxkvqmhxdfrzsvr.supabase.co',
+  supabaseAnonKey: 'sb_publishable_KVz7IUtBBSuzFBu4WMAORA_IcPbOxui',
+  datasets: [
+    { id: 'lung1', name: 'Lung adenocarcinoma' },
+  ],
+};

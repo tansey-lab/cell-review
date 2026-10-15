@@ -1,0 +1,85 @@
+:root {
+  --bg: #15171a; --panel: #1d2024; --line: #30343a; --text: #e4e6e9; --muted: #9aa0a8; --accent: #ff4fd8; --ok: #34c759;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+#app { display: grid; grid-template-columns: 170px 1fr 380px; height: 100vh; }
+body.right-collapsed #app { grid-template-columns: 170px 1fr 0; }
+body.right-collapsed #right { display: none; }
+aside { background: var(--panel); overflow-y: auto; padding: 10px; }
+#left { border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+#right { border-left: 1px solid var(--line); }
+h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 6px; }
+.hint { color: var(--muted); font-size: 11px; font-weight: normal; }
+.small { font-size: 12px; color: var(--muted); }
+.row { display: flex; align-items: center; gap: 6px; margin: 5px 0; flex-wrap: wrap; }
+input, select, button, textarea { font: inherit; color: var(--text); background: #111316; border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px; }
+button { cursor: pointer; } button:hover:not(:disabled) { border-color: var(--muted); } button:disabled { opacity: .45; cursor: default; }
+button.primary { background: #2b5cd6; border-color: #2b5cd6; color: #fff; font-weight: 600; }
+textarea { width: 100%; resize: vertical; }
+
+#who { margin-bottom: 6px; }
+#progress { margin: 6px 0 8px; font-size: 12px; color: var(--muted); }
+#progress .bar { height: 5px; background: #111316; border-radius: 3px; overflow: hidden; margin-bottom: 3px; }
+#progress .bar i { display: block; height: 100%; background: var(--ok); width: 0; }
+#list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.item { position: relative; cursor: pointer; border: 2px solid transparent; border-radius: 4px; }
+.item img { width: 100%; aspect-ratio: 1; display: block; border-radius: 3px; background: #000; }
+.item .num { position: absolute; left: 4px; top: 3px; font-size: 11px; background: rgba(0,0,0,.6); padding: 0 5px; border-radius: 3px; }
+.item .mark { position: absolute; right: 4px; top: 2px; color: var(--ok); font-weight: 700; text-shadow: 0 0 3px #000; }
+.item.done img { opacity: .55; }
+.item.cur { border-color: var(--accent); }
+
+#center { display: flex; flex-direction: column; padding: 8px; gap: 6px; min-width: 0; }
+#stage { position: relative; flex: 1; min-height: 200px; display: flex; align-items: center; justify-content: center; }
+#main { display: block; background: #000; border-radius: 4px; }
+#main-lab { position: absolute; left: 8px; top: 6px; font-size: 12px; background: rgba(0,0,0,.6); padding: 1px 7px; border-radius: 3px; }
+#toggle-right { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; padding: 0; background: rgba(20,22,25,.85); }
+#depth { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+#depth input { flex: 1; }
+#vigs { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.vig { position: relative; cursor: pointer; }
+.vig img { width: 100%; aspect-ratio: 1; display: block; border-radius: 3px; background: #000; }
+.vig span { position: absolute; left: 3px; top: 2px; font-size: 10.5px; background: rgba(0,0,0,.6); padding: 0 4px; border-radius: 3px;
+  max-width: calc(100% - 6px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vig.active img { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+#question { border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: #191b1f; }
+.q-title { font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+#choices { display: flex; flex-direction: column; gap: 5px; }
+.choice { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
+.choice input { display: none; }
+.choice .k { width: 18px; height: 18px; border-radius: 3px; background: #111316; border: 1px solid var(--line); font-size: 11px;
+  display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
+.choice .t { font-size: 14px; }
+.choice.on { border-color: var(--accent); background: rgba(255,79,216,.08); }
+#other { width: 100%; margin-top: 6px; }
+.conf { color: var(--muted); }
+#save-msg { min-height: 16px; }
+
+#chips, .set-genes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 10px; background: #111316; border: 1px solid var(--line); }
+.chip i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.chip .x, .chip .gx { cursor: pointer; color: var(--muted); }
+#gene-input, #set-name { flex: 1; min-width: 0; }
+#sets { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; }
+.set { border: 1px solid var(--line); border-radius: 5px; padding: 5px 6px; }
+.set-head { display: flex; align-items: center; gap: 5px; }
+.set-head .name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-head button { padding: 0 6px; }
+.set-add { width: 100%; margin-top: 4px; }
+
+#tbl { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; margin-top: 4px; }
+#tbl th { position: sticky; top: 0; background: var(--panel); text-align: right; font-weight: 500; color: var(--muted); cursor: pointer; padding: 3px 4px; border-bottom: 1px solid var(--line); }
+#tbl th:first-child, #tbl td:first-child { text-align: left; }
+#tbl th.sorted { color: var(--text); }
+#tbl td { text-align: right; padding: 2px 4px; border-bottom: 1px solid #25282d; }
+#tbl tr { cursor: pointer; } #tbl tbody tr:hover { background: #262a30; }
+#tbl td i { width: 9px; height: 9px; display: inline-block; border-radius: 2px; margin-right: 4px; }
+#tx-summary b { color: var(--text); font-weight: 500; }
+
+#gate { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+.gate-box { max-width: 460px; text-align: center; color: var(--muted); }
+.gate-box h1 { color: var(--text); font-size: 20px; }

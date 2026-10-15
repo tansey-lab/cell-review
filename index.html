@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cell Review</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="gate" hidden><div class="gate-box"><h1>Cell Review</h1><p id="gate-msg"></p></div></div>
+<div id="app" hidden>
+  <aside id="left">
+    <div id="who"></div>
+    <div id="ds-name" class="small"></div>
+    <div id="dataset-row"><select id="dataset"></select></div>
+    <div id="progress"><div class="bar"><i></i></div><span></span></div>
+    <div id="list"></div>
+  </aside>
+
+  <main id="center">
+    <div id="stage">
+      <canvas id="main"></canvas>
+      <span id="main-lab"></span>
+      <button id="toggle-right" title="hide or show the side panel">⟩</button>
+    </div>
+    <div id="depth" hidden>
+      <span>DAPI focal plane</span><input type="range" id="zr" min="0" max="0" value="0"><span id="zl"></span>
+    </div>
+    <div id="vigs"></div>
+    <div class="row small" id="overlay-ctl">
+      <label><input type="checkbox" id="ov-outlines" checked> outlines</label>
+      <label><input type="checkbox" id="ov-hl" checked> highlighted transcripts</label>
+      <label><input type="checkbox" id="ov-all"> all transcripts</label>
+    </div>
+  </main>
+
+  <aside id="right">
+    <section id="question">
+      <div class="q-title">Which label fits the outlined cell best?</div>
+      <div id="choices"></div>
+      <input id="other" placeholder="if neither: what is it?" hidden>
+      <div class="row conf"><span>confidence</span>
+        <label><input type="radio" name="conf" value="1"> low</label>
+        <label><input type="radio" name="conf" value="2"> medium</label>
+        <label><input type="radio" name="conf" value="3"> high</label>
+      </div>
+      <textarea id="comment" rows="2" placeholder="comment (optional)"></textarea>
+      <div class="row">
+        <button id="prev">← previous</button>
+        <button id="save" class="primary">save &amp; next →</button>
+      </div>
+      <div id="save-msg" class="small"></div>
+    </section>
+
+    <section>
+      <h2>Highlighted genes</h2>
+      <div class="row">
+        <input id="gene-input" list="gene-list" placeholder="type a gene, Enter" autocomplete="off">
+        <datalist id="gene-list"></datalist>
+        <button id="hl-clear">clear</button>
+      </div>
+      <div id="chips"></div>
+    </section>
+
+    <section>
+      <h2>My marker sets</h2>
+      <div class="row">
+        <input id="set-name" placeholder="new set name, Enter" autocomplete="off">
+        <button id="set-create">create</button>
+      </div>
+      <div id="sets"></div>
+    </section>
+
+    <section>
+      <h2>Transcripts in this window</h2>
+      <div id="tx-summary" class="small"></div>
+      <div class="row small"><input id="tbl-filter" placeholder="filter genes"></div>
+      <table id="tbl"><thead></thead><tbody></tbody></table>
+    </section>
+  </aside>
+</div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
