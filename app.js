@@ -501,9 +501,11 @@ function gate(msg) { $('#gate-msg').innerHTML = msg; $('#gate').hidden = false; 
   $('#dataset').innerHTML = ds.map((d) => `<option value="${d.id}">${d.name}</option>`).join('');
   $('#dataset-row').hidden = ds.length < 2;
   $('#dataset').onchange = (e) => openDataset(e.target.value);
+  const wanted = ds.find((d) => d.id === params.get('d'));      // ?d=<set id> opens that set
+  if (wanted) $('#dataset').value = wanted.id;
   try { if ((JSON.parse(localStorage.getItem(UI_KEY)) || {}).rightCollapsed) setRightCollapsed(true); } catch (e) { /* ignore */ }
   renderSets();
   pullSets();
   $('#app').hidden = false;
-  await openDataset((ds[0] || {}).id);
+  await openDataset((wanted || ds[0] || {}).id);
 })();

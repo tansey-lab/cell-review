@@ -1,0 +1,104 @@
+{
+"cells": [
+{
+"id": "cf3356a8583",
+"A": "B cell",
+"B": "plasma cell"
+},
+{
+"id": "c761544cdb1",
+"A": "B cell",
+"B": "follicular dendritic cell"
+},
+{
+"id": "c1c3abacec0",
+"A": "CD4 T cell",
+"B": "myofibroblastic cancer-associated fibroblast"
+},
+{
+"id": "c6bce5a90d5",
+"A": "tumor cell",
+"B": "airway secretory cell"
+},
+{
+"id": "c79241ce119",
+"A": "venous endothelial cell",
+"B": "inflammatory cancer-associated fibroblast"
+},
+{
+"id": "c390e84225b",
+"A": "plasma cell",
+"B": "B cell"
+},
+{
+"id": "ce47e1dbe34",
+"A": "CD4 T cell",
+"B": "B cell"
+},
+{
+"id": "c44dc9d1f03",
+"A": "tumor cell",
+"B": "conventional dendritic cell type 2 (cDC2)"
+},
+{
+"id": "cc1ea079d22",
+"A": "myofibroblastic cancer-associated fibroblast",
+"B": "CD4 T cell"
+},
+{
+"id": "c940ee6dada",
+"A": "B cell",
+"B": "CD8 T cell"
+},
+{
+"id": "cc49c95ce30",
+"A": "adventitial fibroblast",
+"B": "capillary endothelial cell"
+},
+{
+"id": "c569423ef1d",
+"A": "tumor-associated macrophage",
+"B": "tumor cell"
+},
+{
+"id": "c1a15c46f39",
+"A": "interstitial macrophage",
+"B": "myofibroblastic cancer-associated fibroblast"
+},
+{
+"id": "cf435012054",
+"A": "alveolar fibroblast",
+"B": "CD8 T cell"
+},
+{
+"id": "c5aee5f8637",
+"A": "myofibroblastic cancer-associated fibroblast",
+"B": "venous endothelial cell"
+},
+{
+"id": "c4d887f4d4c",
+"A": "myofibroblastic cancer-associated fibroblast",
+"B": "capillary endothelial cell"
+},
+{
+"id": "c182866464f",
+"A": "CD8 T cell",
+"B": "B cell"
+},
+{
+"id": "cd5469f3b8d",
+"A": "lymphatic endothelial cell",
+"B": "CD8 T cell"
+},
+{
+"id": "c2b85bf96e0",
+"A": "tumor cell",
+"B": "CD8 T cell"
+},
+{
+"id": "c6a091deac7",
+"A": "plasma cell",
+"B": "B cell"
+}
+]
+}
