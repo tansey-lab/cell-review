@@ -14,6 +14,7 @@ const LOCAL = !(CFG.supabaseUrl && CFG.supabaseAnonKey);    // no backend config
 const st = {
   dataset: null, cells: [], idx: 0, data: null, answers: new Map(),
   mod: 'he', z: 0, hl: [], genes: [], geneSet: new Set(),
+  sel: null, sv: null, slide: null,
   wv: { s: 1, x: 0, y: 0 },       // wider view: zoom factor and top-left corner of the visible part (µm)
 };
 
@@ -96,25 +97,39 @@ async function goTo(i) {
   if (st.cells[st.idx] !== c) return;
   st.z = st.data.planes.length ? st.data.planes[Math.floor(st.data.planes.length / 2)] : 0;
   st.wv = { s: 1, x: 0, y: 0 };
+  st.sv = null;                       // whole-slide view: fitted to the slide on first draw
+  st.sel = null;                      // selected neighbouring cell (local id); null = the outlined cell
+  snap = null;
+  if (!MODS().some(([m]) => m === st.mod)) st.mod = 'he';
   renderQuestion(c);
   renderVignettes();
   drawMain();
   renderTable();
 }
 
-const MODS = () => [['he', 'H&E'], ['context', 'wider view'], ['composite', 'stains'],
-  ...st.data.channels.map((n, i) => [`c${i}`, n])];
+const PAN = new Set(['context', 'slide']);           // views that zoom and drag
+const slideId = () => (st.data && st.data.slide && st.data.slide.id) || '';
+const slideBase = () => `data/slides/${slideId()}`;
+const MODS = () => [['he', 'H&E'], ['context', 'wider view'], ...(slideId() ? [['slide', 'whole slide']] : []),
+  ['composite', 'stains'], ...st.data.channels.map((n, i) => [`c${i}`, n])];
 
 function renderVignettes() {
   const c = st.cells[st.idx];
-  $('#vigs').innerHTML = MODS().map(([m, lab]) => `<div class="vig${m === st.mod ? ' active' : ''}" data-m="${m}">
-    <img src="${base()}/images/${c.id}/${m}.jpg" alt=""><span>${lab}</span></div>`).join('');
+  $('#vigs').innerHTML = MODS().map(([m, lab]) => {
+    const src = m === 'slide' ? `${slideBase()}/thumb.jpg` : `${base()}/images/${c.id}/${m}.jpg`;
+    return `<div class="vig${m === st.mod ? ' active' : ''}" data-m="${m}"><img src="${src}" alt=""><span>${lab}</span></div>`;
+  }).join('');
+  modeClasses();
+}
+function modeClasses() {
+  $('#main').classList.toggle('pannable', PAN.has(st.mod));
+  $('#main').classList.toggle('pickable', !PAN.has(st.mod));
 }
 $('#vigs').addEventListener('click', (e) => {
   const v = e.target.closest('.vig'); if (!v) return;
   st.mod = v.dataset.m;
   document.querySelectorAll('.vig').forEach((el) => el.classList.toggle('active', el.dataset.m === st.mod));
-  $('#main').classList.toggle('pannable', st.mod === 'context');
+  modeClasses();
   drawMain();
 });
 
@@ -127,46 +142,61 @@ function img(url) {
   return imgCache.get(url);
 }
 
+function sizeCanvas() {
+  const cv = $('#main');
+  const css = Math.floor(Math.min(cv.parentElement.clientWidth, cv.parentElement.clientHeight));
+  const px = Math.round(css * (window.devicePixelRatio || 1));
+  if (cv.width !== px) { cv.width = cv.height = px; cv.style.width = cv.style.height = `${css}px`; snap = null; }
+  return px;
+}
+
 async function drawMain() {
-  const d = st.data, c = st.cells[st.idx]; if (!d) return;
-  const depthOK = st.mod === 'c0' && d.planes.length > 0;
+  const d = st.data, c = st.cells[st.idx], mode = st.mod; if (!d) return;
+  const depthOK = mode === 'c0' && d.planes.length > 0;
   $('#depth').hidden = !depthOK;
   if (depthOK) {
     const zr = $('#zr');
     zr.min = 0; zr.max = d.planes.length; zr.value = d.planes.indexOf(st.z) >= 0 ? d.planes.indexOf(st.z) + 1 : 0;
   }
   const useZ = depthOK && +$('#zr').value > 0;
-  const file = useZ ? `z${st.z}` : st.mod;
-  const label = useZ ? `DAPI, focal plane ${st.z + 1} of ${d.n_planes}` : (MODS().find(([m]) => m === st.mod) || [, ''])[1];
-  $('#main-lab').textContent = st.mod === 'context' ? `${label} · scroll to zoom, drag to move, double-click to reset` : label;
+  const file = useZ ? `z${st.z}` : mode;
+  const label = useZ ? `DAPI, focal plane ${st.z + 1} of ${d.n_planes}` : (MODS().find(([m]) => m === mode) || [, ''])[1];
+  $('#main-lab').textContent = PAN.has(mode) ? `${label} · scroll to zoom, drag to move, double-click to reset`
+    : `${label} · click a neighbouring cell to see its transcripts`;
   $('#zl').textContent = useZ ? `plane ${st.z + 1} of ${d.n_planes}` : 'in-focus image';
-  const cv = $('#main');
-  const css = Math.min(cv.parentElement.clientWidth, cv.parentElement.clientHeight);
-  const px = Math.round(css * (window.devicePixelRatio || 1));
-  cv.style.width = cv.style.height = `${css}px`;
-  cv.width = cv.height = px;
-  const im = await img(`${base()}/images/${c.id}/${file}.jpg`);
-  if (st.cells[st.idx] !== c) return;
-  const g = cv.getContext('2d');
-  g.fillStyle = '#000'; g.fillRect(0, 0, px, px);
-  if (st.mod !== 'context') {
+  const cv = $('#main'), px = sizeCanvas(), g = cv.getContext('2d');
+  const stale = () => st.cells[st.idx] !== c || st.mod !== mode;
+  if (mode === 'slide') {
+    const S = await loadSlide(slideId());
+    if (stale() || !S) return;
+    drawSlide(g, px, S);
+  } else if (mode === 'context') {
+    const [im, w] = await Promise.all([img(`${base()}/images/${c.id}/context.jpg`), loadWide(c.id)]);
+    if (stale()) return;
+    const W = d.wide.size, v = viewOf('context');
+    g.fillStyle = '#000'; g.fillRect(0, 0, px, px);
+    if (im) { const f = im.width / W; g.drawImage(im, v.x0 * f, v.y0 * f, v.w * f, v.w * f, 0, 0, px, px); }
+    overlayWide(g, px, d, w);
+    scaleBar(g, px, v.w);
+  } else {
+    const im = await img(`${base()}/images/${c.id}/${file}.jpg`);
+    if (stale()) return;
+    g.fillStyle = '#000'; g.fillRect(0, 0, px, px);
     if (im) g.drawImage(im, 0, 0, px, px);
     overlay(g, px, d);
     scaleBar(g, px, d.window[2] - d.window[0]);
-  } else {
-    const w = await loadWide(c.id);
-    if (st.cells[st.idx] !== c || st.mod !== 'context') return;
-    const W = d.wide.size, vw = W / st.wv.s;
-    g.fillStyle = '#000'; g.fillRect(0, 0, px, px);
-    if (im) { const f = im.width / W; g.drawImage(im, st.wv.x * f, st.wv.y * f, vw * f, vw * f, 0, 0, px, px); }
-    overlayWide(g, px, d, w);
-    scaleBar(g, px, vw);
+  }
+  if (PAN.has(mode)) {                          // keep the frame: zoom and drag show it instantly, then redraw
+    snap = snap && snap.canvas.width === px ? snap : { canvas: document.createElement('canvas') };
+    snap.canvas.width = snap.canvas.height = px;
+    snap.canvas.getContext('2d').drawImage(cv, 0, 0);
+    Object.assign(snap, { mode, id: c.id, v: { ...viewOf(mode) } });
   }
 }
 
 // scale bar, bottom left: a round length close to a fifth of the view
 function scaleBar(g, px, um) {
-  const target = um / 5, nice = [0.5, 1, 2, 5, 10, 20, 50, 100, 200];
+  const target = um / 5, nice = [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000];
   const L = nice.reduce((b, v) => (Math.abs(Math.log(v / target)) < Math.abs(Math.log(b / target)) ? v : b));
   const dpr = window.devicePixelRatio || 1, len = (L / um) * px, m = 12 * dpr, x = m, y = px - m;
   g.save();
@@ -177,62 +207,173 @@ function scaleBar(g, px, um) {
   g.beginPath(); g.moveTo(x, y); g.lineTo(x + len, y); g.stroke();
   g.font = `${12 * dpr}px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif`;
   g.textBaseline = 'bottom'; g.lineWidth = 3 * dpr; g.strokeStyle = 'rgba(0,0,0,0.8)'; g.fillStyle = '#fff';
-  const t = `${L} µm`;
+  const t = L >= 1000 ? `${L / 1000} mm` : `${L} µm`;
   g.strokeText(t, x, y - 6 * dpr); g.fillText(t, x, y - 6 * dpr);
   g.restore();
 }
 
-// wider view: wheel to zoom around the pointer, drag to move, double-click to reset
-const WV_MAX = 4;   // beyond this the H&E is finer than the scan
-let wvFrame = 0;
-function redrawSoon() { if (!wvFrame) wvFrame = requestAnimationFrame(() => { wvFrame = 0; drawMain(); }); }
-function clampView() {
-  const W = st.data.wide.size, vw = W / st.wv.s;
-  st.wv.x = Math.max(0, Math.min(W - vw, st.wv.x)); st.wv.y = Math.max(0, Math.min(W - vw, st.wv.y));
+// ---------------------------------------------------------------------------- zoom and drag (wider view, whole slide)
+// A view is the square of the image shown, in µm: { x0, y0, w } (wider view: relative to it; slide: on the slide).
+const WV_MAX = 4;          // wider view: beyond this the H&E is finer than the scan
+const SV_MIN = 150;        // whole slide: narrowest view, µm (finer: use the wider view)
+let snap = null, drag = null, frame = 0, idle = 0;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function fitSlide(S) { const w = Math.max(S.width, S.height) * 1.02; return { w, x0: (S.width - w) / 2, y0: (S.height - w) / 2 }; }
+function viewOf(m) {
+  if (m === 'context') { const W = st.data.wide.size, w = W / st.wv.s; return { x0: st.wv.x, y0: st.wv.y, w }; }
+  return st.sv;
 }
-function pointerUm(e) {
-  const r = $('#main').getBoundingClientRect(), vw = st.data.wide.size / st.wv.s;
-  return [st.wv.x + ((e.clientX - r.left) / r.width) * vw, st.wv.y + ((e.clientY - r.top) / r.height) * vw];
+function clampW(m, w) {
+  if (m === 'context') { const W = st.data.wide.size; return clamp(w, W / WV_MAX, W); }
+  return clamp(w, SV_MIN, Math.max(st.slide.width, st.slide.height) * 1.2);
 }
+function setView(m, v) {
+  if (m === 'context') {
+    const W = st.data.wide.size;
+    st.wv = { s: W / v.w, x: clamp(v.x0, 0, W - v.w), y: clamp(v.y0, 0, W - v.w) };
+  } else {
+    const S = st.slide;
+    st.sv = { w: v.w, x0: clamp(v.x0, -v.w / 2, S.width - v.w / 2), y0: clamp(v.y0, -v.w / 2, S.height - v.w / 2) };
+  }
+}
+function pointerUm(e, v) {
+  const r = $('#main').getBoundingClientRect();
+  return [v.x0 + ((e.clientX - r.left) / r.width) * v.w, v.y0 + ((e.clientY - r.top) / r.height) * v.w];
+}
+function interact() {                              // instant preview from the last frame; full redraw after a pause
+  if (!frame) frame = requestAnimationFrame(() => { frame = 0; preview(); });
+  clearTimeout(idle); idle = setTimeout(drawMain, 130);
+}
+function preview() {
+  const c = st.cells[st.idx];
+  if (!snap || snap.mode !== st.mod || snap.id !== c.id) { drawMain(); return; }
+  const cv = $('#main'), g = cv.getContext('2d'), px = cv.width, v = viewOf(st.mod), o = snap.v, S = snap.canvas.width;
+  g.fillStyle = st.mod === 'slide' ? (st.slide.background || '#ddd') : '#000'; g.fillRect(0, 0, px, px);
+  g.drawImage(snap.canvas, ((v.x0 - o.x0) / o.w) * S, ((v.y0 - o.y0) / o.w) * S, (v.w / o.w) * S, (v.w / o.w) * S, 0, 0, px, px);
+}
+const ready = () => st.data && PAN.has(st.mod) && (st.mod !== 'slide' || (st.sv && st.slide));
 $('#main').addEventListener('wheel', (e) => {
-  if (st.mod !== 'context' || !st.data) return;
+  if (!ready()) return;
   e.preventDefault();
-  const [ux, uy] = pointerUm(e), s0 = st.wv.s;
-  const s = Math.max(1, Math.min(WV_MAX, s0 * Math.exp(-e.deltaY * 0.002)));
-  st.wv.x = ux - (ux - st.wv.x) * (s0 / s); st.wv.y = uy - (uy - st.wv.y) * (s0 / s); st.wv.s = s;
-  clampView(); redrawSoon();
+  const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+  const v = viewOf(st.mod), [ux, uy] = pointerUm(e, v);
+  const w = clampW(st.mod, v.w * Math.exp(dy * (e.ctrlKey ? 0.012 : 0.003)));   // ctrlKey: trackpad pinch
+  setView(st.mod, { w, x0: ux - (ux - v.x0) * (w / v.w), y0: uy - (uy - v.y0) * (w / v.w) });
+  interact();
 }, { passive: false });
-let drag = null;
 $('#main').addEventListener('pointerdown', (e) => {
-  if (st.mod !== 'context' || !st.data) return;
-  drag = { x: e.clientX, y: e.clientY, vx: st.wv.x, vy: st.wv.y };
+  if (!ready()) return;
+  drag = { x: e.clientX, y: e.clientY, v: { ...viewOf(st.mod) } };
   $('#main').setPointerCapture(e.pointerId); $('#main').classList.add('dragging');
 });
 $('#main').addEventListener('pointermove', (e) => {
   if (!drag) return;
-  const r = $('#main').getBoundingClientRect(), f = st.data.wide.size / st.wv.s / r.width;
-  st.wv.x = drag.vx - (e.clientX - drag.x) * f; st.wv.y = drag.vy - (e.clientY - drag.y) * f;
-  clampView(); redrawSoon();
+  const r = $('#main').getBoundingClientRect(), f = drag.v.w / r.width;
+  setView(st.mod, { w: drag.v.w, x0: drag.v.x0 - (e.clientX - drag.x) * f, y0: drag.v.y0 - (e.clientY - drag.y) * f });
+  interact();
 });
 const endDrag = () => { drag = null; $('#main').classList.remove('dragging'); };
 $('#main').addEventListener('pointerup', endDrag);
 $('#main').addEventListener('pointercancel', endDrag);
-$('#main').addEventListener('dblclick', () => { if (st.mod === 'context') { st.wv = { s: 1, x: 0, y: 0 }; drawMain(); } });
+$('#main').addEventListener('dblclick', () => {
+  if (st.mod === 'context') st.wv = { s: 1, x: 0, y: 0 };
+  else if (st.mod === 'slide' && st.slide) st.sv = fitSlide(st.slide);
+  else return;
+  drawMain();
+});
 $('#zr').oninput = () => {
   const v = +$('#zr').value;
   if (v > 0) st.z = st.data.planes[v - 1];
   drawMain();
 };
 
+// ---------------------------------------------------------------------------- whole slide (image tiles)
+const slideCache = new Map();
+function loadSlide(id) {
+  if (!slideCache.has(id)) {
+    slideCache.set(id, fetch(`data/slides/${id}/slide.json`).then((r) => r.json()).then((S) => {
+      S.levels.forEach((l) => { l.have = new Set(l.tiles); }); return S;
+    }).catch(() => null));
+  }
+  return slideCache.get(id).then((S) => { st.slide = S; return S; });
+}
+const tiles = new Map();
+function tile(url) {                               // the tile if loaded; otherwise start loading it and redraw then
+  let t = tiles.get(url);
+  if (!t) {
+    t = new Image(); t.onload = () => { if (st.mod === 'slide') { clearTimeout(idle); idle = setTimeout(drawMain, 60); } };
+    t.src = url; tiles.set(url, t);
+    if (tiles.size > 600) tiles.delete(tiles.keys().next().value);
+  }
+  return t.complete && t.naturalWidth ? t : null;
+}
+function drawSlide(g, px, S) {
+  if (!st.sv) st.sv = fitSlide(S);
+  const v = st.sv, k = px / v.w;                   // device pixels per µm
+  g.fillStyle = S.background || '#ddd'; g.fillRect(0, 0, px, px);
+  let L = 0;
+  S.levels.forEach((l, i) => { if (l.um_per_px <= 1.4 / k) L = i; });
+  for (const li of [...new Set([Math.min(L + 2, S.levels.length - 1), L])]) {   // coarse first (fills gaps), then sharp
+    const l = S.levels[li], T = S.tile * l.um_per_px;
+    const tx0 = Math.max(0, Math.floor(v.x0 / T)), ty0 = Math.max(0, Math.floor(v.y0 / T));
+    const tx1 = Math.min(l.nx - 1, Math.floor((v.x0 + v.w) / T)), ty1 = Math.min(l.ny - 1, Math.floor((v.y0 + v.w) / T));
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) {
+        const key = `${tx}_${ty}`; if (!l.have.has(key)) continue;
+        const im = tile(`${slideBase()}/${li}/${key}.jpg`);
+        if (im) g.drawImage(im, (tx * T - v.x0) * k, (ty * T - v.y0) * k, T * k + 1, T * k + 1);
+      }
+    }
+  }
+  overlaySlide(g, px, v, k);
+  scaleBar(g, px, v.w);
+}
+function overlaySlide(g, px, v, k) {
+  const d = st.data, [sx, sy] = d.slide.origin, [ox, oy] = d.wide.offset, W = d.wide.size;
+  const dpr = window.devicePixelRatio || 1, lw = dpr / k;
+  g.save();
+  g.setTransform(k, 0, 0, k, -v.x0 * k, -v.y0 * k);
+  const bx = sx - ox, by = sy - oy;                // the wider view on the slide
+  g.lineWidth = 3.5 * lw; g.strokeStyle = 'rgba(0,0,0,0.7)'; g.strokeRect(bx, by, W, W);
+  g.lineWidth = 1.8 * lw; g.strokeStyle = '#ffd60a'; g.strokeRect(bx, by, W, W);
+  if (W * k < 16 * dpr) {                          // too small to see: a ring of fixed size around it
+    const cx = bx + W / 2, cy = by + W / 2, r = 16 * lw;
+    g.lineWidth = 3.5 * lw; g.strokeStyle = 'rgba(0,0,0,0.7)'; g.beginPath(); g.arc(cx, cy, r, 0, 2 * Math.PI); g.stroke();
+    g.lineWidth = 2 * lw; g.strokeStyle = '#ffd60a'; g.beginPath(); g.arc(cx, cy, r, 0, 2 * Math.PI); g.stroke();
+  }
+  if ($('#ov-outlines').checked) {
+    g.translate(sx, sy);
+    g.lineWidth = 2 * lw; g.strokeStyle = '#ff4fd8'; for (const o of d.outline) g.stroke(flatPath(o));
+  }
+  g.restore();
+}
+
+// ---------------------------------------------------------------------------- outlines, transcripts, neighbours
 function flatPath(f) { const p = new Path2D(); for (let i = 0; i < f.length; i += 2) (i ? p.lineTo(f[i], f[i + 1]) : p.moveTo(f[i], f[i + 1])); p.closePath(); return p; }
-function payloadPath(pl) {
+function payloadPath(pl, only = null) {
   const p = new Path2D(); let o = 0;
   for (let i = 0; i < pl.cell.length; i++) {
-    for (let j = 0; j < pl.n[i]; j++, o += 2) (j ? p.lineTo(pl.xy[o], pl.xy[o + 1]) : p.moveTo(pl.xy[o], pl.xy[o + 1]));
-    p.closePath();
+    const keep = only === null || pl.cell[i] === only;
+    for (let j = 0; j < pl.n[i]; j++, o += 2) if (keep) (j ? p.lineTo(pl.xy[o], pl.xy[o + 1]) : p.moveTo(pl.xy[o], pl.xy[o + 1]));
+    if (keep) p.closePath();
   }
   return p;
 }
+function inPoly(xy, o, n, x, y) {
+  let inside = false;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = xy[o + 2 * i], yi = xy[o + 2 * i + 1], xj = xy[o + 2 * j], yj = xy[o + 2 * j + 1];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+// depth: dot size grows with z (5th to 95th percentile of the view mapped to 0.45x to 2x)
+const depthOn = () => $('#ov-depth').checked;
+function zRange(z) {
+  const s = Array.from(z).sort((a, b) => a - b);
+  return s.length ? [s[Math.floor(s.length * 0.05)], s[Math.floor(s.length * 0.95)] || s[s.length - 1]] : [0, 1];
+}
+const zScale = (z, zr) => 0.45 + 1.55 * clamp((z - zr[0]) / (zr[1] - zr[0] || 1), 0, 1);
 
 function overlay(g, px, d) {
   const [x0, y0, x1] = d.window, k = px / (x1 - x0), lw = 1 / k;
@@ -244,29 +385,56 @@ function overlay(g, px, d) {
     g.lineWidth = 2.5 * lw; g.strokeStyle = '#ff4fd8'; for (const o of d.outline) g.stroke(flatPath(o));
     g.lineWidth = 1.5 * lw; g.strokeStyle = '#38d6ff'; for (const o of d.nuclei) g.stroke(flatPath(o));
   }
+  if (st.sel !== null) {                            // the selected neighbouring cell
+    g.lineWidth = 2.5 * lw; g.strokeStyle = '#ffd60a'; g.stroke(payloadPath(d.neighbors.cell, st.sel));
+    g.setLineDash([3 * lw, 2 * lw]); g.lineWidth = 1.5 * lw; g.stroke(payloadPath(d.neighbors.nucleus, st.sel)); g.setLineDash([]);
+  }
   const t = d.tx, hl = new Map(st.hl.map((h) => [h.name, h.color]));
-  const r = Math.max(1.6, 2.4 * px / 700) / k;
+  const r = Math.max(1.6, 2.4 * px / 700) / k, dz = depthOn() && t.z;
+  if (dz && !d._zr) d._zr = zRange(t.z);
+  const ri = (i) => (dz ? r * zScale(t.z[i], d._zr) : r);
   if ($('#ov-all').checked) {
     g.fillStyle = 'rgba(230,230,230,0.75)';
-    for (let i = 0; i < t.x.length; i++) if (!hl.has(d.genes[t.g[i]])) g.fillRect(t.x[i] - r / 2, t.y[i] - r / 2, r, r);
+    for (let i = 0; i < t.x.length; i++) if (!hl.has(d.genes[t.g[i]])) { const q = ri(i); g.fillRect(t.x[i] - q / 2, t.y[i] - q / 2, q, q); }
   }
   if ($('#ov-hl').checked || $('#ov-all').checked) {
     for (let i = 0; i < t.x.length; i++) {
       const col = hl.get(d.genes[t.g[i]]); if (!col) continue;
-      g.fillStyle = '#000'; g.fillRect(t.x[i] - r - lw, t.y[i] - r - lw, 2 * r + 2 * lw, 2 * r + 2 * lw);
-      g.fillStyle = col; g.fillRect(t.x[i] - r, t.y[i] - r, 2 * r, 2 * r);
+      const q = ri(i);
+      g.fillStyle = '#000'; g.fillRect(t.x[i] - q - lw, t.y[i] - q - lw, 2 * q + 2 * lw, 2 * q + 2 * lw);
+      g.fillStyle = col; g.fillRect(t.x[i] - q, t.y[i] - q, 2 * q, 2 * q);
     }
   }
   g.restore();
 }
 
-// wider view: every transcript of the extended neighborhood, loaded once per cell (uint32 n, uint16 x, y in 0.01 µm, gene)
+// click a neighbouring cell (focus views) to show its transcripts in the table; click the outlined cell to go back
+$('#main').addEventListener('click', (e) => {
+  const d = st.data; if (!d || PAN.has(st.mod)) return;
+  const r = $('#main').getBoundingClientRect(), [x0, y0, x1] = d.window;
+  const ux = x0 + ((e.clientX - r.left) / r.width) * (x1 - x0), uy = y0 + ((e.clientY - r.top) / r.height) * (x1 - x0);
+  let sel = null;
+  if (!d.outline.some((o) => inPoly(o, 0, o.length / 2, ux, uy))) {
+    const pl = d.neighbors.cell; let o = 0;
+    for (let i = 0; i < pl.cell.length; o += 2 * pl.n[i], i++) {
+      if (pl.cell[i] !== d.neighbors.self && inPoly(pl.xy, o, pl.n[i], ux, uy)) { sel = pl.cell[i]; break; }
+    }
+  }
+  if (sel !== null && !(d.neighbor_tx && d.neighbor_tx.cells[sel])) sel = null;
+  if (sel === st.sel) return;
+  st.sel = sel;
+  drawMain(); renderTable();
+});
+
+// wider view: every transcript of the extended neighborhood, loaded once per cell
+// (uint32 n, then uint16 x, y in 0.01 µm, uint16 gene, uint16 z in 0.01 µm)
 const wideCache = new Map();
 function loadWide(id) {
   if (!wideCache.has(id)) {
     wideCache.set(id, fetch(`${base()}/cells/${id}.wide.bin`).then((r) => r.arrayBuffer()).then((buf) => {
       const n = new Uint32Array(buf, 0, 1)[0];
-      return { n, x: new Uint16Array(buf, 4, n), y: new Uint16Array(buf, 4 + 2 * n, n), g: new Uint16Array(buf, 4 + 4 * n, n) };
+      return { n, x: new Uint16Array(buf, 4, n), y: new Uint16Array(buf, 4 + 2 * n, n), g: new Uint16Array(buf, 4 + 4 * n, n),
+        z: buf.byteLength >= 4 + 8 * n ? new Uint16Array(buf, 4 + 6 * n, n) : null };
     }).catch(() => null));
     if (wideCache.size > 20) wideCache.delete(wideCache.keys().next().value);
   }
@@ -274,24 +442,26 @@ function loadWide(id) {
 }
 
 function overlayWide(g, px, d, w) {
-  const W = d.wide, k = px / (W.size / st.wv.s), [ox, oy] = W.offset, size = d.window[2] - d.window[0];
+  const W = d.wide, v = viewOf('context'), k = px / v.w, [ox, oy] = W.offset, size = d.window[2] - d.window[0];
   g.save();
-  g.setTransform(k, 0, 0, k, -st.wv.x * k, -st.wv.y * k);
+  g.setTransform(k, 0, 0, k, -v.x0 * k, -v.y0 * k);
   const lw = 1 / k;
   if (w) {
     const hl = new Map(st.hl.map((h) => [h.name, h.color]));
     const col = W.genes.map((name) => hl.get(name) || null);
-    const r = Math.max(1.2, 1.8 * px / 700) / k;
+    const r = Math.max(1.2, 1.8 * px / 700) / k, dz = depthOn() && w.z;
+    if (dz && !w.zr) w.zr = zRange(w.z);
+    const ri = (i) => (dz ? r * zScale(w.z[i], w.zr) : r);
     if ($('#ov-all').checked) {
       g.fillStyle = 'rgba(230,230,230,0.6)';
-      for (let i = 0; i < w.n; i++) if (!col[w.g[i]]) g.fillRect(w.x[i] / 100 - r / 2, w.y[i] / 100 - r / 2, r, r);
+      for (let i = 0; i < w.n; i++) if (!col[w.g[i]]) { const q = ri(i); g.fillRect(w.x[i] / 100 - q / 2, w.y[i] / 100 - q / 2, q, q); }
     }
     if ($('#ov-hl').checked || $('#ov-all').checked) {
       for (let i = 0; i < w.n; i++) {
         const c = col[w.g[i]]; if (!c) continue;
-        const x = w.x[i] / 100, y = w.y[i] / 100;
-        g.fillStyle = '#000'; g.fillRect(x - r - lw, y - r - lw, 2 * r + 2 * lw, 2 * r + 2 * lw);
-        g.fillStyle = c; g.fillRect(x - r, y - r, 2 * r, 2 * r);
+        const x = w.x[i] / 100, y = w.y[i] / 100, q = ri(i);
+        g.fillStyle = '#000'; g.fillRect(x - q - lw, y - q - lw, 2 * q + 2 * lw, 2 * q + 2 * lw);
+        g.fillStyle = c; g.fillRect(x - q, y - q, 2 * q, 2 * q);
       }
     }
   }
@@ -304,7 +474,7 @@ function overlayWide(g, px, d, w) {
   g.restore();
 }
 
-['#ov-outlines', '#ov-hl', '#ov-all'].forEach((id) => { $(id).onchange = drawMain; });
+['#ov-outlines', '#ov-hl', '#ov-all', '#ov-depth'].forEach((id) => { $(id).onchange = drawMain; });
 new ResizeObserver(() => drawMain()).observe($('#stage'));
 
 // ============================================================================ question
@@ -441,8 +611,14 @@ $('#sets').addEventListener('keydown', (e) => {
 });
 
 const tbl = { sort: 'cell', dir: -1 };
+function neighbourRows(d) {
+  const nt = d.neighbor_tx, nc = nt.cells[st.sel];
+  return nc.g.map((gi, j) => ({ gene: nt.genes[gi], nuc: nc.nuc[j], cell: nc.cell[j], out: nc.band[j],
+    ratio: nc.cell[j] / Math.max(nt.density[gi] * nc.area, 1e-3) }));
+}
 function renderTable() {
   const d = st.data; if (!d) return;
+  if (st.sel !== null) return renderRows(neighbourRows(d), true);
   const t = d.tx, acc = new Map();
   for (let i = 0; i < t.g.length; i++) {
     const gi = t.g[i];
@@ -454,15 +630,19 @@ function renderTable() {
   const dens = new Map(d.genes.map((gname, i) => [gname, d.density[i]]));
   // vs tissue: molecules inside the cell / molecules expected in a region of that size at the tissue-wide density
   for (const r of rows) { r.out = r.win - r.cell; r.ratio = r.cell / Math.max(dens.get(r.gene) * d.area_cell, 1e-3); }
+  renderRows(rows, false);
+}
+function renderRows(rows, neighbour) {
   const nIn = rows.reduce((s, r) => s + r.cell, 0), nNuc = rows.reduce((s, r) => s + r.nuc, 0);
-  $('#tx-summary').innerHTML = `<b>${nIn}</b> molecules inside the cell (<b>${rows.filter((r) => r.cell).length}</b> genes), <b>${nNuc}</b> inside the nucleus. Hover a column title for its meaning.`;
+  $('#tx-summary').innerHTML = (neighbour ? '<span class="nb">Neighbouring cell</span> (yellow outline). <a href="#" id="sel-back">Back to the outlined cell</a><br>' : '')
+    + `<b>${nIn}</b> molecules inside the cell (<b>${rows.filter((r) => r.cell).length}</b> genes), <b>${nNuc}</b> inside the nucleus. Hover a column title for its meaning.`;
   const f = $('#tbl-filter').value.trim().toUpperCase();
   if (f) rows = rows.filter((r) => r.gene.includes(f));
   rows.sort((a, b) => (tbl.sort === 'gene' ? a.gene.localeCompare(b.gene) * -tbl.dir : (a[tbl.sort] - b[tbl.sort]) * tbl.dir) || b.cell - a.cell);
   const cols = [['gene', 'gene', 'gene name'],
     ['nuc', 'nucleus', 'molecules inside the nucleus outline'],
     ['cell', 'cell', 'molecules inside the cell outline (includes the nucleus)'],
-    ['out', 'neighborhood', 'molecules in the window around the cell, outside its outline'],
+    ['out', 'neighborhood', neighbour ? 'molecules within 3 µm outside its outline' : 'molecules in the window around the cell, outside its outline'],
     ['ratio', 'vs tissue', 'how many times more molecules are inside the cell than expected from the average density of this gene over the whole tissue']];
   $('#tbl thead').innerHTML = '<tr>' + cols.map(([k, l, tip]) => `<th data-k="${k}" title="${tip}" class="${k === tbl.sort ? 'sorted' : ''}">${l}${k === tbl.sort ? (tbl.dir < 0 ? ' ▾' : ' ▴') : ''}</th>`).join('') + '</tr>';
   const hl = new Map(st.hl.map((h) => [h.name, h.color]));
@@ -477,6 +657,10 @@ $('#tbl thead').addEventListener('click', (e) => {
 });
 $('#tbl tbody').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-g]'); if (tr) toggleHl(tr.dataset.g); });
 $('#tbl-filter').oninput = renderTable;
+$('#tx-summary').addEventListener('click', (e) => {
+  if (e.target.id !== 'sel-back') return;
+  e.preventDefault(); st.sel = null; drawMain(); renderTable();
+});
 
 // ============================================================================ layout
 
