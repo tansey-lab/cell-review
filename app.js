@@ -66,7 +66,10 @@ async function openDataset(id) {
   st.cells = cells.cells;
   st.genes = genes; st.geneSet = new Set(genes);
   $('#gene-list').innerHTML = genes.map((g) => `<option value="${g}">`).join('');
-  st.answers = new Map((await myAnswers()).filter((a) => !a.dataset || a.dataset === id).map((a) => [a.cell_id, a]));
+  // an answer counts only if it was given against the options shown now (labels can be updated between versions)
+  const shown = new Map(st.cells.map((c) => [c.id, c]));
+  const current = (a) => { const c = shown.get(a.cell_id); return c && (!a.option_a || (a.option_a === c.A && a.option_b === c.B)); };
+  st.answers = new Map((await myAnswers()).filter((a) => (!a.dataset || a.dataset === id) && current(a)).map((a) => [a.cell_id, a]));
   renderList();
   const firstOpen = st.cells.findIndex((c) => !st.answers.has(c.id));
   await goTo(firstOpen >= 0 ? firstOpen : 0);

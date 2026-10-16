@@ -6,11 +6,6 @@
 "B": "neutrophil"
 },
 {
-"id": "c4398b9076f",
-"A": "alveolar type 2 cell",
-"B": "AT2-like tumor cell"
-},
-{
 "id": "c01bfd0ce13",
 "A": "pericyte",
 "B": "alveolar fibroblast"
@@ -18,12 +13,12 @@
 {
 "id": "c949ce844e7",
 "A": "plasma cell",
-"B": "T cell"
+"B": "B cell"
 },
 {
 "id": "cef4909d2ff",
 "A": "basal cell",
-"B": "mucinous tumor cell"
+"B": "airway secretory cell"
 },
 {
 "id": "cadd72a4a66",
@@ -32,18 +27,13 @@
 },
 {
 "id": "ce58ac2ad87",
-"A": "T or NK cell",
+"A": "neutrophil",
 "B": "conventional dendritic cell type 2 (cDC2)"
 },
 {
 "id": "c6b9b72a160",
 "A": "lymphatic endothelial cell",
-"B": "T cell"
-},
-{
-"id": "c0acaab1bee",
-"A": "lymphatic endothelial cell",
-"B": "capillary endothelial cell"
+"B": "CD4 T cell"
 },
 {
 "id": "cdc96a1050b",
@@ -57,7 +47,7 @@
 },
 {
 "id": "cc6777cb252",
-"A": "interstitial macrophage",
+"A": "tumor-associated macrophage",
 "B": "plasma cell"
 },
 {
@@ -123,7 +113,7 @@
 {
 "id": "c6b947942cd",
 "A": "KRT8+ alveolar intermediate cell",
-"B": "AT2-like tumor cell"
+"B": "tumor cell"
 },
 {
 "id": "cfa010d8d48",
@@ -148,7 +138,7 @@
 {
 "id": "cd1abca904b",
 "A": "macrophage",
-"B": "granulocyte"
+"B": "alveolar macrophage"
 },
 {
 "id": "c02f2e49502",
@@ -183,7 +173,7 @@
 {
 "id": "c5029e8cb80",
 "A": "tumor cell",
-"B": "cytotoxic T cell"
+"B": "gamma-delta T cell"
 },
 {
 "id": "c421cdee32f",
@@ -193,7 +183,7 @@
 {
 "id": "cbfbfb47427",
 "A": "B cell",
-"B": "plasma cell"
+"B": "CD4 T cell"
 },
 {
 "id": "c0df9949b98",
@@ -202,12 +192,12 @@
 },
 {
 "id": "c135cf4088e",
-"A": "interstitial macrophage",
+"A": "tumor-associated macrophage",
 "B": "tumor cell"
 },
 {
 "id": "ca8008624e9",
-"A": "T cell",
+"A": "B cell",
 "B": "macrophage"
 },
 {
@@ -217,12 +207,12 @@
 },
 {
 "id": "c05229c7ef0",
-"A": "blood endothelial cell",
+"A": "capillary endothelial cell",
 "B": "myofibroblastic cancer-associated fibroblast"
 },
 {
 "id": "c8e628a211f",
-"A": "venous endothelial cell",
+"A": "vascular smooth muscle cell",
 "B": "adventitial fibroblast"
 },
 {
@@ -238,12 +228,12 @@
 {
 "id": "c1cc42bef3d",
 "A": "conventional dendritic cell type 2 (cDC2)",
-"B": "lymphocyte"
+"B": "neutrophil"
 },
 {
 "id": "c57f10980f4",
 "A": "adventitial fibroblast",
-"B": "large-vessel endothelial cell"
+"B": "venous endothelial cell"
 },
 {
 "id": "c6b34e32006",
@@ -252,12 +242,12 @@
 },
 {
 "id": "c58dd11593e",
-"A": "T cell",
+"A": "CD4 T cell",
 "B": "B cell"
 },
 {
 "id": "c92cd171fa5",
-"A": "cancer-associated fibroblast",
+"A": "plasmablast",
 "B": "plasma cell"
 },
 {
@@ -271,11 +261,6 @@
 "B": "plasma cell"
 },
 {
-"id": "cca7a7c50bb",
-"A": "capillary endothelial cell",
-"B": "lymphatic endothelial cell"
-},
-{
 "id": "c8779cfeb53",
 "A": "tumor cell",
 "B": "ciliated cell"
@@ -287,7 +272,7 @@
 },
 {
 "id": "c445720a912",
-"A": "alveolar type 2 cell",
+"A": "cancer-associated fibroblast",
 "B": "tumor cell"
 },
 {
@@ -297,7 +282,7 @@
 },
 {
 "id": "cfbff0d7b62",
-"A": "CD4 T cell",
+"A": "CD8 T cell",
 "B": "myofibroblastic cancer-associated fibroblast"
 },
 {
@@ -327,7 +312,7 @@
 },
 {
 "id": "cded06106da",
-"A": "CD8 T cell",
+"A": "cytotoxic T cell",
 "B": "conventional dendritic cell type 2 (cDC2)"
 },
 {
@@ -347,7 +332,7 @@
 },
 {
 "id": "c8465c24c58",
-"A": "B cell",
+"A": "cancer-associated fibroblast",
 "B": "plasma cell"
 },
 {
@@ -358,7 +343,7 @@
 {
 "id": "c3f630e6789",
 "A": "B cell",
-"B": "T cell"
+"B": "CD4 T cell"
 },
 {
 "id": "c65c57618da",
@@ -382,7 +367,7 @@
 },
 {
 "id": "c10359395d5",
-"A": "solid-pattern tumor cell",
+"A": "tumor cell",
 "B": "club cell"
 },
 {
@@ -417,33 +402,28 @@
 },
 {
 "id": "cbc9a5f98a0",
-"A": "T cell",
+"A": "CD8 T cell",
 "B": "myofibroblastic cancer-associated fibroblast"
 },
 {
 "id": "ca3e0382234",
 "A": "B cell",
-"B": "plasmablast"
+"B": "plasma cell"
 },
 {
 "id": "caffa3d30c4",
 "A": "alveolar fibroblast",
-"B": "pericyte"
-},
-{
-"id": "c4cf938673c",
-"A": "blood endothelial cell",
-"B": "lymphatic endothelial cell"
+"B": "myofibroblast"
 },
 {
 "id": "cc7820ef400",
 "A": "myofibroblastic cancer-associated fibroblast",
-"B": "T cell"
+"B": "CD8 T cell"
 },
 {
 "id": "c8abe57b945",
 "A": "alveolar fibroblast",
-"B": "CD8 T cell"
+"B": "CD4 T cell"
 },
 {
 "id": "cee6e18b517",
@@ -453,7 +433,7 @@
 {
 "id": "c5e36f45dfa",
 "A": "venous endothelial cell",
-"B": "cancer-associated fibroblast"
+"B": "plasma cell"
 },
 {
 "id": "c41afad0ce3",
@@ -467,12 +447,12 @@
 },
 {
 "id": "cf3e537d31c",
-"A": "lymphocyte",
+"A": "neutrophil",
 "B": "conventional dendritic cell type 2 (cDC2)"
 },
 {
 "id": "c1b00b63a1c",
-"A": "plasma cell",
+"A": "T cell",
 "B": "B cell"
 },
 {
@@ -483,11 +463,11 @@
 {
 "id": "cceffa78af1",
 "A": "B cell",
-"B": "plasma cell"
+"B": "plasmablast"
 },
 {
 "id": "cb9927f5652",
-"A": "interstitial macrophage",
+"A": "tumor-associated macrophage",
 "B": "myofibroblastic cancer-associated fibroblast"
 },
 {
