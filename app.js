@@ -14,7 +14,10 @@ const LOCAL = !(CFG.supabaseUrl && CFG.supabaseAnonKey);    // no backend config
 const st = {
   dataset: null, cells: [], idx: 0, data: null, answers: new Map(),
   mod: 'he', z: 0, hl: [], genes: [], geneSet: new Set(),
-  sel: null, sv: null, slide: null,
+  sv: null, slide: null,
+  draw: null,                     // drawing mode: 'nuc' | 'cell' | null
+  mine: { nuc: null, cell: null }, // the reviewer's outlines of this cell (flat µm, focus-window coordinates)
+  zsel: null,                     // depth interval shown [lo, hi] in µm; null = all
   wv: { s: 1, x: 0, y: 0 },       // wider view: zoom factor and top-left corner of the visible part (µm)
 };
 
@@ -70,6 +73,7 @@ async function openDataset(id) {
   const shown = new Map(st.cells.map((c) => [c.id, c]));
   const current = (a) => { const c = shown.get(a.cell_id); return c && (!a.option_a || (a.option_a === c.A && a.option_b === c.B)); };
   st.answers = new Map((await myAnswers()).filter((a) => (!a.dataset || a.dataset === id) && current(a)).map((a) => [a.cell_id, a]));
+  await pullMine(id);
   renderList();
   const firstOpen = st.cells.findIndex((c) => !st.answers.has(c.id));
   await goTo(firstOpen >= 0 ? firstOpen : 0);
@@ -101,7 +105,10 @@ async function goTo(i) {
   st.z = st.data.planes.length ? st.data.planes[Math.floor(st.data.planes.length / 2)] : 0;
   st.wv = { s: 1, x: 0, y: 0 };
   st.sv = null;                       // whole-slide view: fitted to the slide on first draw
-  st.sel = null;                      // selected neighbouring cell (local id); null = the outlined cell
+  st.mine = loadMine()[c.id] || { nuc: null, cell: null };
+  st.zsel = null;
+  hover = vdrag = null;
+  setDraw(null);
   snap = null;
   if (!MODS().some(([m]) => m === st.mod)) st.mod = 'he';
   renderQuestion(c);
@@ -126,7 +133,7 @@ function renderVignettes() {
 }
 function modeClasses() {
   $('#main').classList.toggle('pannable', PAN.has(st.mod));
-  $('#main').classList.toggle('pickable', !PAN.has(st.mod));
+  $('#main').classList.toggle('drawing', !!st.draw && !PAN.has(st.mod));
 }
 $('#vigs').addEventListener('click', (e) => {
   const v = e.target.closest('.vig'); if (!v) return;
@@ -164,10 +171,14 @@ async function drawMain() {
   const useZ = depthOK && +$('#zr').value > 0;
   const file = useZ ? `z${st.z}` : mode;
   const label = useZ ? `DAPI, focal plane ${st.z + 1} of ${d.n_planes}` : (MODS().find(([m]) => m === mode) || [, ''])[1];
+  if (!PAN.has(mode)) st.lastFocus = mode;
   $('#main-lab').textContent = PAN.has(mode) ? `${label} · scroll to zoom, drag to move, double-click to reset`
-    : `${label} · click a neighbouring cell to see its transcripts`;
+    : st.draw ? `${label} · click points around the ${st.draw === 'nuc' ? 'nucleus' : 'cell'}, then the first point (or Enter) to close · or press and trace · Esc cancels`
+    : st.mine.nuc || st.mine.cell ? `${label} · drag a point to move it · click an edge to add one · Alt-click a point to remove it`
+    : `${label} · ✎ under the image: draw the nucleus and the cell`;
   $('#zl').textContent = useZ ? `plane ${st.z + 1} of ${d.n_planes}` : 'in-focus image';
   const cv = $('#main'), px = sizeCanvas(), g = cv.getContext('2d');
+  drawZbar();
   const stale = () => st.cells[st.idx] !== c || st.mod !== mode;
   if (mode === 'slide') {
     const S = await loadSlide(slideId());
@@ -344,24 +355,15 @@ function overlaySlide(g, px, v, k) {
     g.lineWidth = 3.5 * lw; g.strokeStyle = 'rgba(0,0,0,0.7)'; g.beginPath(); g.arc(cx, cy, r, 0, 2 * Math.PI); g.stroke();
     g.lineWidth = 2 * lw; g.strokeStyle = '#ffd60a'; g.beginPath(); g.arc(cx, cy, r, 0, 2 * Math.PI); g.stroke();
   }
-  if ($('#ov-outlines').checked) {
-    g.translate(sx, sy);
-    g.lineWidth = 2 * lw; g.strokeStyle = '#ff4fd8'; for (const o of d.outline) g.stroke(flatPath(o));
-  }
+  if ($('#ov-outlines').checked) { g.translate(sx, sy); marker(g, lw); }
   g.restore();
 }
 
-// ---------------------------------------------------------------------------- outlines, transcripts, neighbours
+// ---------------------------------------------------------------------------- marker, the reviewer's outlines, transcripts
+// The 10x segmentation is not shown (its cell outlines often take in parts of neighbouring cells): a dot marks the
+// centre of the cell's nucleus and the reviewer draws the nucleus and the cell. Outlines are flat [x0, y0, x1, y1, ...]
+// in µm, in the coordinates of the focus window.
 function flatPath(f) { const p = new Path2D(); for (let i = 0; i < f.length; i += 2) (i ? p.lineTo(f[i], f[i + 1]) : p.moveTo(f[i], f[i + 1])); p.closePath(); return p; }
-function payloadPath(pl, only = null) {
-  const p = new Path2D(); let o = 0;
-  for (let i = 0; i < pl.cell.length; i++) {
-    const keep = only === null || pl.cell[i] === only;
-    for (let j = 0; j < pl.n[i]; j++, o += 2) if (keep) (j ? p.lineTo(pl.xy[o], pl.xy[o + 1]) : p.moveTo(pl.xy[o], pl.xy[o + 1]));
-    if (keep) p.closePath();
-  }
-  return p;
-}
 function inPoly(xy, o, n, x, y) {
   let inside = false;
   for (let i = 0, j = n - 1; i < n; j = i++) {
@@ -370,63 +372,277 @@ function inPoly(xy, o, n, x, y) {
   }
   return inside;
 }
-// depth: dot size grows with z (5th to 95th percentile of the view mapped to 0.45x to 2x)
-const depthOn = () => $('#ov-depth').checked;
-function zRange(z) {
-  const s = Array.from(z).sort((a, b) => a - b);
-  return s.length ? [s[Math.floor(s.length * 0.05)], s[Math.floor(s.length * 0.95)] || s[s.length - 1]] : [0, 1];
+const inFlat = (f, x, y) => inPoly(f, 0, f.length / 2, x, y);
+function flatArea(f) {
+  let a = 0;
+  for (let i = 0, n = f.length / 2, j = n - 1; i < n; j = i++) a += f[2 * j] * f[2 * i + 1] - f[2 * i] * f[2 * j + 1];
+  return Math.abs(a) / 2;
 }
-const zScale = (z, zr) => 0.45 + 1.55 * clamp((z - zr[0]) / (zr[1] - zr[0] || 1), 0, 1);
+function flatCentroid(f) {
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0, n = f.length / 2, j = n - 1; i < n; j = i++) {
+    const c = f[2 * j] * f[2 * i + 1] - f[2 * i] * f[2 * j + 1];
+    a += c; cx += (f[2 * j] + f[2 * i]) * c; cy += (f[2 * j + 1] + f[2 * i + 1]) * c;
+  }
+  return Math.abs(a) > 1e-9 ? [cx / (3 * a), cy / (3 * a)] : [f[0], f[1]];
+}
+function distToFlat(f, x, y) {                     // distance from a point to the outline's edge
+  let best = Infinity;
+  for (let i = 0, n = f.length / 2, j = n - 1; i < n; j = i++) {
+    const ax = f[2 * j], ay = f[2 * j + 1], dx = f[2 * i] - ax, dy = f[2 * i + 1] - ay;
+    const t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1), 0, 1);
+    best = Math.min(best, Math.hypot(x - ax - t * dx, y - ay - t * dy));
+  }
+  return best;
+}
+// the marked spot: centre of the cell's (largest) nucleus, else of its 10x outline, else of the window
+function markPoint(d) {
+  if (!d._mark) {
+    const polys = (d.nuclei && d.nuclei.length ? d.nuclei : d.outline) || [];
+    const big = polys.reduce((b, p) => (!b || flatArea(p) > flatArea(b) ? p : b), null);
+    d._mark = big ? flatCentroid(big) : [(d.window[0] + d.window[2]) / 2, (d.window[1] + d.window[3]) / 2];
+  }
+  return d._mark;
+}
+function marker(g, lw) {                           // lw: µm per device pixel
+  const [mx, my] = markPoint(st.data), dpr = window.devicePixelRatio || 1;
+  g.beginPath(); g.arc(mx, my, 4.5 * dpr * lw, 0, 2 * Math.PI); g.fillStyle = '#000'; g.fill();
+  g.beginPath(); g.arc(mx, my, 3 * dpr * lw, 0, 2 * Math.PI); g.fillStyle = '#ff4fd8'; g.fill();
+}
+function drawMine(g, lw, handles = false) {       // the reviewer's outlines (cell: solid pink, nucleus: dashed cyan)
+  const px = (window.devicePixelRatio || 1) * lw;  // µm per css pixel
+  for (const [k, col, dash] of [['cell', '#ff4fd8', []], ['nuc', '#38d6ff', [4, 3]]]) {
+    const f = st.mine[k]; if (!f) continue;
+    g.setLineDash(dash.map((v) => v * px));
+    g.lineWidth = 3.5 * px; g.strokeStyle = 'rgba(0,0,0,0.6)'; g.stroke(flatPath(f));
+    g.lineWidth = 1.8 * px; g.strokeStyle = col; g.stroke(flatPath(f));
+    g.setLineDash([]);
+    if (handles) for (let i = 0; i < f.length; i += 2) handle(g, f[i], f[i + 1], col, px, !!hover && hover.kind === k && hover.i === i / 2);
+  }
+  if (drawing) {                                   // the outline in progress, with the segment to the pointer
+    const q = drawing.pts, col = drawing.kind === 'nuc' ? '#38d6ff' : '#ff4fd8';
+    if (q.length >= 2) {
+      const p = new Path2D();
+      for (let i = 0; i < q.length; i += 2) (i ? p.lineTo(q[i], q[i + 1]) : p.moveTo(q[i], q[i + 1]));
+      if (drawing.cursor && !drawing.free) p.lineTo(drawing.cursor[0], drawing.cursor[1]);
+      g.lineWidth = 3.5 * px; g.strokeStyle = 'rgba(0,0,0,0.6)'; g.stroke(p);
+      g.lineWidth = 1.8 * px; g.strokeStyle = col; g.stroke(p);
+    }
+    if (!drawing.free) for (let i = 0; i < q.length; i += 2) handle(g, q[i], q[i + 1], col, px, i === 0 && q.length >= 6);
+  }
+}
+function handle(g, x, y, col, px, big) {           // a control point (big: the one under the pointer, or the first one)
+  const s = (big ? 5 : 3.5) * px;
+  g.fillStyle = '#000'; g.fillRect(x - s - px, y - s - px, 2 * s + 2 * px, 2 * s + 2 * px);
+  g.fillStyle = big ? '#fff' : col; g.fillRect(x - s, y - s, 2 * s, 2 * s);
+}
+// Stored per cell: { nuc, cell: control points [x0, y0, x1, y1, ...] in µm (focus-window coordinates), origin: the window's
+// origin on the slide, t: time of the last change }. Kept in this browser and, with a backend, saved to the reviewer's
+// account shortly after each change (review_save_outlines), so they follow the reviewer to another browser.
+const mineKey = () => `cell-review-outlines-v2-${TOKEN || 'local'}-${st.dataset}`;   // v2: control points (v1, traces, ignored)
+function loadMine() { try { return JSON.parse(localStorage.getItem(mineKey())) || {}; } catch (e) { return {}; } }
+const mineTimers = new Map();
+function storeMine() {
+  const all = loadMine(), c = st.cells[st.idx], has = !!(st.mine.nuc || st.mine.cell);
+  st.mine = { ...st.mine, t: Date.now(), origin: (st.data && st.data.slide && st.data.slide.origin) || null };
+  if (has) all[c.id] = st.mine; else delete all[c.id];
+  try { localStorage.setItem(mineKey(), JSON.stringify(all)); } catch (e) { /* storage unavailable */ }
+  if (LOCAL) return;
+  const ds = st.dataset, payload = has ? { nuc: st.mine.nuc, cell: st.mine.cell, origin: st.mine.origin } : null;
+  clearTimeout(mineTimers.get(c.id));
+  mineTimers.set(c.id, setTimeout(() => rpc('review_save_outlines', { p_token: TOKEN, p_dataset: ds, p_cell: c.id, p_outlines: payload })
+    .catch(() => { /* kept in this browser; sent again with the next change */ }), 700));
+}
+async function pullMine(id) {                      // outlines saved from another browser: the newer copy wins
+  if (LOCAL) return;
+  try {
+    const rows = (await rpc('review_my_outlines', { p_token: TOKEN, p_dataset: id })) || [], all = loadMine();
+    for (const r of rows) {
+      const t = Date.parse(r.updated_at);
+      if (!all[r.cell_id] || (all[r.cell_id].t || 0) < t) all[r.cell_id] = { ...r.outlines, t };
+    }
+    localStorage.setItem(mineKey(), JSON.stringify(all));
+  } catch (e) { /* not available: this browser's copy only */ }
+}
+// depth interval: only molecules with zsel[0] <= z <= zsel[1] are shown and counted
+const zOK = (z) => !st.zsel || (z >= st.zsel[0] && z <= st.zsel[1]);
 
 function overlay(g, px, d) {
   const [x0, y0, x1] = d.window, k = px / (x1 - x0), lw = 1 / k;
   g.save();
   g.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
-  if ($('#ov-outlines').checked) {
-    g.lineWidth = lw; g.strokeStyle = 'rgba(255,255,255,0.45)'; g.stroke(payloadPath(d.neighbors.cell));
-    g.setLineDash([3 * lw, 2 * lw]); g.strokeStyle = 'rgba(56,214,255,0.45)'; g.stroke(payloadPath(d.neighbors.nucleus)); g.setLineDash([]);
-    g.lineWidth = 2.5 * lw; g.strokeStyle = '#ff4fd8'; for (const o of d.outline) g.stroke(flatPath(o));
-    g.lineWidth = 1.5 * lw; g.strokeStyle = '#38d6ff'; for (const o of d.nuclei) g.stroke(flatPath(o));
-  }
-  if (st.sel !== null) {                            // the selected neighbouring cell
-    g.lineWidth = 2.5 * lw; g.strokeStyle = '#ffd60a'; g.stroke(payloadPath(d.neighbors.cell, st.sel));
-    g.setLineDash([3 * lw, 2 * lw]); g.lineWidth = 1.5 * lw; g.stroke(payloadPath(d.neighbors.nucleus, st.sel)); g.setLineDash([]);
-  }
   const t = d.tx, hl = new Map(st.hl.map((h) => [h.name, h.color]));
-  const r = Math.max(1.6, 2.4 * px / 700) / k, dz = depthOn() && t.z;
-  if (dz && !d._zr) d._zr = zRange(t.z);
-  const ri = (i) => (dz ? r * zScale(t.z[i], d._zr) : r);
+  const r = Math.max(1.6, 2.4 * px / 700) / k, show = (i) => !t.z || zOK(t.z[i]);
   if ($('#ov-all').checked) {
     g.fillStyle = 'rgba(230,230,230,0.75)';
-    for (let i = 0; i < t.x.length; i++) if (!hl.has(d.genes[t.g[i]])) { const q = ri(i); g.fillRect(t.x[i] - q / 2, t.y[i] - q / 2, q, q); }
+    for (let i = 0; i < t.x.length; i++) if (show(i) && !hl.has(d.genes[t.g[i]])) g.fillRect(t.x[i] - r / 2, t.y[i] - r / 2, r, r);
   }
   if ($('#ov-hl').checked || $('#ov-all').checked) {
     for (let i = 0; i < t.x.length; i++) {
-      const col = hl.get(d.genes[t.g[i]]); if (!col) continue;
-      const q = ri(i);
-      g.fillStyle = '#000'; g.fillRect(t.x[i] - q - lw, t.y[i] - q - lw, 2 * q + 2 * lw, 2 * q + 2 * lw);
-      g.fillStyle = col; g.fillRect(t.x[i] - q, t.y[i] - q, 2 * q, 2 * q);
+      const col = hl.get(d.genes[t.g[i]]); if (!col || !show(i)) continue;
+      g.fillStyle = '#000'; g.fillRect(t.x[i] - r - lw, t.y[i] - r - lw, 2 * r + 2 * lw, 2 * r + 2 * lw);
+      g.fillStyle = col; g.fillRect(t.x[i] - r, t.y[i] - r, 2 * r, 2 * r);
     }
   }
+  if ($('#ov-outlines').checked || drawing) drawMine(g, lw, $('#ov-outlines').checked);
+  if ($('#ov-outlines').checked) marker(g, lw);
   g.restore();
 }
 
-// click a neighbouring cell (focus views) to show its transcripts in the table; click the outlined cell to go back
-$('#main').addEventListener('click', (e) => {
-  const d = st.data; if (!d || PAN.has(st.mod)) return;
-  const r = $('#main').getBoundingClientRect(), [x0, y0, x1] = d.window;
-  const ux = x0 + ((e.clientX - r.left) / r.width) * (x1 - x0), uy = y0 + ((e.clientY - r.top) / r.height) * (x1 - x0);
-  let sel = null;
-  if (!d.outline.some((o) => inPoly(o, 0, o.length / 2, ux, uy))) {
-    const pl = d.neighbors.cell; let o = 0;
-    for (let i = 0; i < pl.cell.length; o += 2 * pl.n[i], i++) {
-      if (pl.cell[i] !== d.neighbors.self && inPoly(pl.xy, o, pl.n[i], ux, uy)) { sel = pl.cell[i]; break; }
+// Drawing and editing outlines, on any focus image (not the wider view or the whole slide).
+// Drawing: click to place control points, then click the first point, double-click or press Enter to close; or press
+// and trace (turned into control points). Backspace removes the last point, Esc cancels.
+// Editing: drag a point to move it, click an edge to add a point there, Alt-click or right-click a point to remove it.
+let drawing = null, press = null, vdrag = null, hover = null, tableTimer = 0;
+function setDraw(kind) {
+  st.draw = kind; drawing = kind ? { kind, pts: [], cursor: null, free: false } : null; press = null;
+  $('#draw-nuc').classList.toggle('on', kind === 'nuc');
+  $('#draw-cell').classList.toggle('on', kind === 'cell');
+  $('#main').style.cursor = '';
+  modeClasses();
+}
+function windowUm(e) {
+  const r = $('#main').getBoundingClientRect(), [x0, y0, x1] = st.data.window;
+  return [x0 + ((e.clientX - r.left) / r.width) * (x1 - x0), y0 + ((e.clientY - r.top) / r.height) * (x1 - x0)];
+}
+const focusReady = () => !!st.data && !PAN.has(st.mod);
+const hitUm = () => (8 * (st.data.window[2] - st.data.window[0])) / $('#main').getBoundingClientRect().width;   // 8 css px
+const r2 = (v) => Math.round(v * 100) / 100;
+function nearVertex(x, y) {
+  const R = hitUm(); let best = null;
+  for (const k of ['nuc', 'cell']) {
+    const f = st.mine[k]; if (!f) continue;
+    for (let i = 0; i < f.length; i += 2) {
+      const d = Math.hypot(f[i] - x, f[i + 1] - y);
+      if (d <= R && (!best || d < best.d)) best = { kind: k, i: i / 2, d };
     }
   }
-  if (sel !== null && !(d.neighbor_tx && d.neighbor_tx.cells[sel])) sel = null;
-  if (sel === st.sel) return;
-  st.sel = sel;
-  drawMain(); renderTable();
+  return best;
+}
+function nearEdge(x, y) {                          // closest edge: the point on it, inserted before vertex `at`
+  const R = hitUm(); let best = null;
+  for (const k of ['nuc', 'cell']) {
+    const f = st.mine[k]; if (!f) continue;
+    for (let i = 0, n = f.length / 2, j = n - 1; i < n; j = i++) {
+      const ax = f[2 * j], ay = f[2 * j + 1], dx = f[2 * i] - ax, dy = f[2 * i + 1] - ay;
+      const t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1), 0, 1), d = Math.hypot(x - ax - t * dx, y - ay - t * dy);
+      if (d <= R && (!best || d < best.d)) best = { kind: k, at: i, x: ax + t * dx, y: ay + t * dy, d };
+    }
+  }
+  return best;
+}
+function simplify(pts, tol) {                      // a traced loop to control points: Ramer-Douglas-Peucker on each half
+  const n = pts.length / 2; if (n < 4) return pts.slice();
+  let far = 1, fd = -1;                            // a loop ends where it started: split it at the point farthest away
+  for (let i = 1; i < n; i++) { const d = Math.hypot(pts[2 * i] - pts[0], pts[2 * i + 1] - pts[1]); if (d > fd) { fd = d; far = i; } }
+  const half = (a, b) => rdp(pts.slice(2 * a, 2 * b + 2), tol);
+  return [...half(0, far), ...half(far, n - 1).slice(2)];
+}
+function rdp(pts, tol) {                           // Ramer-Douglas-Peucker on an open line
+  const n = pts.length / 2; if (n < 3) return pts.slice();
+  const keep = new Uint8Array(n), stack = [[0, n - 1]]; keep[0] = keep[n - 1] = 1;
+  while (stack.length) {
+    const [a, b] = stack.pop(), ax = pts[2 * a], ay = pts[2 * a + 1], dx = pts[2 * b] - ax, dy = pts[2 * b + 1] - ay, L = Math.hypot(dx, dy) || 1;
+    let m = -1, md = tol;
+    for (let i = a + 1; i < b; i++) { const d = Math.abs((pts[2 * i] - ax) * dy - (pts[2 * i + 1] - ay) * dx) / L; if (d > md) { md = d; m = i; } }
+    if (m >= 0) { keep[m] = 1; stack.push([a, m], [m, b]); }
+  }
+  const out = []; for (let i = 0; i < n; i++) if (keep[i]) out.push(pts[2 * i], pts[2 * i + 1]);
+  return out;
+}
+function redraw() { if (!frame) frame = requestAnimationFrame(() => { frame = 0; drawMain(); }); }
+function outlinesChanged() { storeMine(); clearTimeout(tableTimer); tableTimer = setTimeout(renderTable, 150); }
+function finish(pts) {                             // close the outline being drawn
+  const kind = drawing.kind, q = pts.map(r2);
+  setDraw(null);
+  if (q.length >= 6 && flatArea(q) > 0.3) { st.mine = { ...st.mine, [kind]: q }; outlinesChanged(); }
+  drawMain();
+}
+function startDraw(kind) {
+  if (!st.data) return;
+  if (PAN.has(st.mod)) {                           // drawing is done on a focus image: back to the last one used
+    st.mod = st.lastFocus || 'he';
+    document.querySelectorAll('.vig').forEach((el) => el.classList.toggle('active', el.dataset.m === st.mod));
+  }
+  setDraw(st.draw === kind ? null : kind);
+  drawMain();
+}
+$('#draw-nuc').onclick = () => startDraw('nuc');
+$('#draw-cell').onclick = () => startDraw('cell');
+$('#draw-clear').onclick = () => { st.mine = { nuc: null, cell: null }; outlinesChanged(); setDraw(null); drawMain(); };
+$('#main').addEventListener('pointerdown', (e) => {
+  if (!focusReady()) return;
+  const ae = document.activeElement;               // e.g. the focal-plane slider: the drawing keys must reach the page
+  if (ae && ae !== document.body && !isTyping(ae)) ae.blur();
+  const [x, y] = windowUm(e);
+  if (st.draw) {
+    press = { cx: e.clientX, cy: e.clientY, moved: false, start: [x, y] };
+    $('#main').setPointerCapture(e.pointerId);
+    return;
+  }
+  if (!$('#ov-outlines').checked) return;
+  const v = nearVertex(x, y);
+  if (v && (e.altKey || e.button === 2)) {         // remove a point (an outline keeps at least 3)
+    const f = st.mine[v.kind];
+    if (f.length > 6) { st.mine = { ...st.mine, [v.kind]: [...f.slice(0, 2 * v.i), ...f.slice(2 * v.i + 2)] }; hover = null; outlinesChanged(); drawMain(); }
+    return;
+  }
+  if (e.button !== 0) return;
+  if (v) vdrag = { kind: v.kind, i: v.i };
+  else {
+    const ed = nearEdge(x, y); if (!ed) return;    // add a point on the edge, and move it
+    const f = st.mine[ed.kind];
+    st.mine = { ...st.mine, [ed.kind]: [...f.slice(0, 2 * ed.at), r2(ed.x), r2(ed.y), ...f.slice(2 * ed.at)] };
+    vdrag = { kind: ed.kind, i: ed.at };
+  }
+  $('#main').setPointerCapture(e.pointerId);
+  redraw();
+});
+$('#main').addEventListener('pointermove', (e) => {
+  if (!focusReady()) return;
+  const [x, y] = windowUm(e);
+  if (press && drawing) {
+    if (!press.moved && !drawing.pts.length && Math.hypot(e.clientX - press.cx, e.clientY - press.cy) > 5) {
+      press.moved = true; drawing.free = true; drawing.pts = [...press.start];       // a trace, not a click
+    }
+    if (drawing.free) {
+      const p = drawing.pts;
+      if (Math.hypot(x - p[p.length - 2], y - p[p.length - 1]) >= 0.15) { p.push(x, y); redraw(); }
+    }
+    return;
+  }
+  if (vdrag) {
+    const f = st.mine[vdrag.kind]; f[2 * vdrag.i] = r2(x); f[2 * vdrag.i + 1] = r2(y);
+    redraw(); clearTimeout(tableTimer); tableTimer = setTimeout(renderTable, 150);
+    return;
+  }
+  if (drawing) { drawing.cursor = [x, y]; redraw(); return; }
+  const on = $('#ov-outlines').checked, v = on ? nearVertex(x, y) : null, ed = on && !v ? nearEdge(x, y) : null;
+  $('#main').style.cursor = v ? 'move' : ed ? 'copy' : '';
+  const nh = v ? { kind: v.kind, i: v.i } : null;
+  if (nh ? !hover || hover.kind !== nh.kind || hover.i !== nh.i : hover) { hover = nh; redraw(); }
+});
+$('#main').addEventListener('pointerup', (e) => {
+  if (press) {
+    press = null;
+    if (!drawing) return;
+    if (drawing.free) { finish(simplify(drawing.pts, 0.25)); return; }
+    const [x, y] = windowUm(e), q = drawing.pts;
+    if (q.length >= 6 && Math.hypot(x - q[0], y - q[1]) <= hitUm()) { finish(q); return; }   // the first point: close
+    q.push(x, y); redraw();
+    return;
+  }
+  if (vdrag) { vdrag = null; outlinesChanged(); drawMain(); }
+});
+$('#main').addEventListener('dblclick', () => {    // close (the second click of the double-click added a point: drop it)
+  if (!st.draw || !drawing || drawing.free) return;
+  const q = drawing.pts, n = q.length;
+  if (n >= 4 && Math.hypot(q[n - 2] - q[n - 4], q[n - 1] - q[n - 3]) <= hitUm()) q.splice(-2);
+  if (q.length >= 6) finish(q);
+});
+$('#main').addEventListener('pointerleave', () => { if (drawing && drawing.cursor) { drawing.cursor = null; redraw(); } });
+$('#main').addEventListener('contextmenu', (e) => {
+  if (focusReady() && $('#ov-outlines').checked && nearVertex(...windowUm(e))) e.preventDefault();
 });
 
 // wider view: every transcript of the extended neighborhood, loaded once per cell
@@ -452,17 +668,15 @@ function overlayWide(g, px, d, w) {
   if (w) {
     const hl = new Map(st.hl.map((h) => [h.name, h.color]));
     const col = W.genes.map((name) => hl.get(name) || null);
-    const r = Math.max(1.2, 1.8 * px / 700) / k, dz = depthOn() && w.z;
-    if (dz && !w.zr) w.zr = zRange(w.z);
-    const ri = (i) => (dz ? r * zScale(w.z[i], w.zr) : r);
+    const r = Math.max(1.2, 1.8 * px / 700) / k, show = (i) => !w.z || zOK(w.z[i] / 100);
     if ($('#ov-all').checked) {
       g.fillStyle = 'rgba(230,230,230,0.6)';
-      for (let i = 0; i < w.n; i++) if (!col[w.g[i]]) { const q = ri(i); g.fillRect(w.x[i] / 100 - q / 2, w.y[i] / 100 - q / 2, q, q); }
+      for (let i = 0; i < w.n; i++) if (show(i) && !col[w.g[i]]) g.fillRect(w.x[i] / 100 - r / 2, w.y[i] / 100 - r / 2, r, r);
     }
     if ($('#ov-hl').checked || $('#ov-all').checked) {
       for (let i = 0; i < w.n; i++) {
-        const c = col[w.g[i]]; if (!c) continue;
-        const x = w.x[i] / 100, y = w.y[i] / 100, q = ri(i);
+        const c = col[w.g[i]]; if (!c || !show(i)) continue;
+        const x = w.x[i] / 100, y = w.y[i] / 100, q = r;
         g.fillStyle = '#000'; g.fillRect(x - q - lw, y - q - lw, 2 * q + 2 * lw, 2 * q + 2 * lw);
         g.fillStyle = c; g.fillRect(x - q, y - q, 2 * q, 2 * q);
       }
@@ -472,20 +686,105 @@ function overlayWide(g, px, d, w) {
     g.translate(ox, oy);
     g.lineWidth = 1.5 * lw; g.strokeStyle = 'rgba(255,255,255,0.7)'; g.setLineDash([4 * lw, 3 * lw]);
     g.strokeRect(0, 0, size, size); g.setLineDash([]);
-    g.lineWidth = 2 * lw; g.strokeStyle = '#ff4fd8'; for (const o of d.outline) g.stroke(flatPath(o));
+    drawMine(g, lw); marker(g, lw);
   }
   g.restore();
 }
 
-['#ov-outlines', '#ov-hl', '#ov-all', '#ov-depth'].forEach((id) => { $(id).onchange = drawMain; });
-new ResizeObserver(() => drawMain()).observe($('#stage'));
+['#ov-outlines', '#ov-hl', '#ov-all'].forEach((id) => { $(id).onchange = drawMain; });
+new ResizeObserver(() => drawMain()).observe($('#cv-wrap'));
+
+// ---------------------------------------------------------------------------- depth bar
+// Beside the image: histogram of the depth (z) of the molecules of the focus window, dots for the highlighted genes,
+// and two handles setting the interval shown (top = larger z). Drag a handle, drag inside to move, double-click: all.
+const ZB = { top: 16, bot: 16 };                   // css px kept for the labels
+let zdrag = null, zTimer = 0;
+function zExtent(d) {                             // 0.5th to 99.5th percentile: a few stray molecules do not stretch the bar
+  if (!d._zext) {
+    const s = Float64Array.from(d.tx.z).sort(), q = (f) => s[Math.min(s.length - 1, Math.floor(f * s.length))];
+    const lo = q(0.005), hi = q(0.995);
+    d._zext = hi > lo ? [lo, hi] : [lo - 0.5, lo + 0.5];
+  }
+  return d._zext;
+}
+const zShown = (lo, hi) => (st.zsel ? [Math.max(st.zsel[0], lo), Math.min(st.zsel[1], hi)] : [lo, hi]);
+function drawZbar() {
+  const d = st.data, show = !!(d && d.tx && d.tx.z && d.tx.z.length) && st.mod !== 'slide';
+  $('#zbar').hidden = !show; if (!show) return;
+  const dpr = window.devicePixelRatio || 1, css = Math.max(120, (parseFloat($('#main').style.height) || 0) - 36);
+  const cv = $('#zcv'), W = Math.round(58 * dpr), H = Math.round(css * dpr);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; cv.style.height = `${css}px`; }
+  const g = cv.getContext('2d'), [lo, hi] = zExtent(d), top = ZB.top * dpr, h = H - (ZB.top + ZB.bot) * dpr;
+  const yOf = (z) => top + ((hi - z) / (hi - lo)) * h, [s0, s1] = zShown(lo, hi), t = d.tx;
+  g.clearRect(0, 0, W, H);
+  const NB = 48, bins = new Array(NB).fill(0);
+  for (const z of t.z) bins[clamp(Math.floor(((z - lo) / (hi - lo)) * NB), 0, NB - 1)]++;
+  const mx = Math.max(...bins, 1);
+  for (let b = 0; b < NB; b++) {
+    const za = lo + (b / NB) * (hi - lo), zb = lo + ((b + 1) / NB) * (hi - lo), zc = (za + zb) / 2;
+    g.fillStyle = zc >= s0 && zc <= s1 ? '#8a9099' : '#3a3f46';
+    g.fillRect(4 * dpr, yOf(zb), (bins[b] / mx) * (W - 8 * dpr), Math.max(1, yOf(za) - yOf(zb) - 0.5 * dpr));
+  }
+  const hl = new Map(st.hl.map((x) => [x.name, x.color]));
+  for (let i = 0; i < t.x.length; i++) {
+    const col = hl.get(d.genes[t.g[i]]); if (!col) continue;
+    const x = 6 * dpr + (((i * 7919) % 997) / 997) * (W - 12 * dpr);    // fixed horizontal scatter
+    g.fillStyle = col; g.beginPath(); g.arc(x, yOf(clamp(t.z[i], lo, hi)), 1.8 * dpr, 0, 2 * Math.PI); g.fill();
+  }
+  g.fillStyle = 'rgba(0,0,0,0.5)';
+  g.fillRect(0, top, W, yOf(s1) - top); g.fillRect(0, yOf(s0), W, top + h - yOf(s0));
+  g.fillStyle = '#ff4fd8';
+  for (const z of [s0, s1]) {
+    const y = yOf(z);
+    g.fillRect(0, y - dpr, W, 2 * dpr);
+    g.beginPath(); g.moveTo(0, y - 5 * dpr); g.lineTo(7 * dpr, y); g.lineTo(0, y + 5 * dpr); g.fill();
+  }
+  g.font = `${10 * dpr}px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif`;
+  g.fillStyle = '#c8ccd2'; g.textAlign = 'center';
+  g.textBaseline = 'bottom'; g.fillText(`z ${s1.toFixed(1)}`, W / 2, top - 2 * dpr);
+  g.textBaseline = 'top'; g.fillText(`${s0.toFixed(1)} µm`, W / 2, top + h + 2 * dpr);
+}
+function zAt(e) {
+  const [lo, hi] = zExtent(st.data), r = $('#zcv').getBoundingClientRect();
+  return hi - clamp((e.clientY - r.top - ZB.top) / (r.height - ZB.top - ZB.bot), 0, 1) * (hi - lo);
+}
+function zChanged() {
+  drawZbar();
+  if (!frame) frame = requestAnimationFrame(() => { frame = 0; drawMain(); });
+  clearTimeout(zTimer); zTimer = setTimeout(renderTable, 120);
+}
+function zMove(e) {
+  if (!zdrag) return;
+  const [lo, hi] = zExtent(st.data), z = zAt(e), [a, b] = zdrag.s, gap = 0.2;
+  let s;
+  if (zdrag.mode === 'hi') s = [a, clamp(z, a + gap, hi)];
+  else if (zdrag.mode === 'lo') s = [clamp(z, lo, b - gap), b];
+  else { const dz = clamp(z - zdrag.z, lo - a, hi - b); s = [a + dz, b + dz]; }
+  // a handle at the end of the bar is open-ended: it also takes the few stray molecules beyond it
+  st.zsel = s[0] <= lo + 1e-6 && s[1] >= hi - 1e-6 ? null : [s[0] <= lo + 1e-6 ? -Infinity : s[0], s[1] >= hi - 1e-6 ? Infinity : s[1]];
+  zChanged();
+}
+$('#zcv').addEventListener('pointerdown', (e) => {
+  if (!st.data || !st.data.tx.z) return;
+  const [lo, hi] = zExtent(st.data), [s0, s1] = zShown(lo, hi), z = zAt(e);
+  const r = $('#zcv').getBoundingClientRect(), near = (8 * (hi - lo)) / (r.height - ZB.top - ZB.bot);
+  const mode = Math.abs(z - s1) <= near && Math.abs(z - s1) <= Math.abs(z - s0) ? 'hi'
+    : Math.abs(z - s0) <= near ? 'lo' : z > s0 && z < s1 ? 'move' : z > s1 ? 'hi' : 'lo';
+  zdrag = { mode, z, s: [s0, s1] };
+  $('#zcv').setPointerCapture(e.pointerId);
+  if (mode !== 'move') zMove(e);
+});
+$('#zcv').addEventListener('pointermove', zMove);
+$('#zcv').addEventListener('pointerup', () => { zdrag = null; });
+$('#zcv').addEventListener('pointercancel', () => { zdrag = null; });
+$('#zcv').addEventListener('dblclick', () => { st.zsel = null; zChanged(); });
 
 // ============================================================================ question
 
 function renderQuestion(c) {
   const a = st.answers.get(c.id) || {};
   const opts = [['A', c.A], ['B', c.B], ['neither', 'neither of these'], ['unsure', "can't tell"],
-    ['multiple', 'the outline covers more than one cell']];
+    ['multiple', 'more than one cell at the marked spot']];
   $('#choices').innerHTML = opts.map(([v, lab], i) => `<label class="choice${a.choice === v ? ' on' : ''}">
       <input type="radio" name="choice" value="${v}" ${a.choice === v ? 'checked' : ''}>
       <span class="k">${i + 1}</span><span class="t">${lab}</span></label>`).join('');
@@ -528,8 +827,17 @@ async function save() {
 $('#save').onclick = save;
 $('#prev').onclick = () => goTo(st.idx - 1);
 
+// keys typed into a text box stay there; sliders, checkboxes and buttons do not keep them from the page
+const isTyping = (el) => el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'
+  || (el.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button'].includes(el.type));
 window.addEventListener('keydown', (e) => {
-  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+  if (isTyping(e.target)) return;
+  if (e.target.type === 'range' && e.key.startsWith('Arrow')) return;   // arrows move the slider (focal plane)
+  if (st.draw && drawing) {
+    if (e.key === 'Escape') { setDraw(null); drawMain(); return; }
+    if (e.key === 'Enter') { e.preventDefault(); if (drawing.pts.length >= 6 && !drawing.free) finish(drawing.pts); return; }
+    if (e.key === 'Backspace') { e.preventDefault(); drawing.pts.splice(-2); redraw(); return; }
+  }
   if ('12345'.includes(e.key)) { const r = document.querySelectorAll('input[name=choice]')[+e.key - 1]; if (r) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); } }
   else if (e.key === 'Enter') save();
   else if (e.key === 'ArrowLeft') goTo(st.idx - 1);
@@ -614,44 +922,48 @@ $('#sets').addEventListener('keydown', (e) => {
 });
 
 const tbl = { sort: 'cell', dir: -1 };
-function neighbourRows(d) {
-  const nt = d.neighbor_tx, nc = nt.cells[st.sel];
-  return nc.g.map((gi, j) => ({ gene: nt.genes[gi], nuc: nc.nuc[j], cell: nc.cell[j], out: nc.band[j],
-    ratio: nc.cell[j] / Math.max(nt.density[gi] * nc.area, 1e-3) }));
-}
+// counts inside the reviewer's outlines (and the depth interval); before any outline, only the whole window
 function renderTable() {
   const d = st.data; if (!d) return;
-  if (st.sel !== null) return renderRows(neighbourRows(d), true);
-  const t = d.tx, acc = new Map();
+  const t = d.tx, acc = new Map(), nuc = st.mine.nuc, cell = st.mine.cell, BAND = 3;
   for (let i = 0; i < t.g.length; i++) {
+    if (t.z && !zOK(t.z[i])) continue;
     const gi = t.g[i];
     let a = acc.get(gi);
-    if (!a) { a = { gene: d.genes[gi], ctl: d.gene_category[gi].indexOf('gene') < 0, nuc: 0, cell: 0, win: 0 }; acc.set(gi, a); }
-    a.win++; if (t.in_cell[i]) a.cell++; if (t.in_nuc[i]) a.nuc++;
+    if (!a) { a = { gi, gene: d.genes[gi], ctl: d.gene_category[gi].indexOf('gene') < 0, nuc: 0, cell: 0, out: 0, win: 0 }; acc.set(gi, a); }
+    a.win++;
+    const x = t.x[i], y = t.y[i];
+    if (nuc && inFlat(nuc, x, y)) a.nuc++;
+    if (cell) { if (inFlat(cell, x, y)) a.cell++; else if (distToFlat(cell, x, y) <= BAND) a.out++; }
   }
-  let rows = [...acc.values()].filter((r) => !r.ctl);
-  const dens = new Map(d.genes.map((gname, i) => [gname, d.density[i]]));
-  // vs tissue: molecules inside the cell / molecules expected in a region of that size at the tissue-wide density
-  for (const r of rows) { r.out = r.win - r.cell; r.ratio = r.cell / Math.max(dens.get(r.gene) * d.area_cell, 1e-3); }
-  renderRows(rows, false);
+  const rows = [...acc.values()].filter((r) => !r.ctl), area = cell ? flatArea(cell) : 0;
+  // vs tissue: molecules inside the cell outline / molecules expected in that area at the tissue-wide density
+  for (const r of rows) r.ratio = area ? r.cell / Math.max(d.density[r.gi] * area, 1e-3) : 0;
+  renderRows(rows);
 }
-function renderRows(rows, neighbour) {
-  const nIn = rows.reduce((s, r) => s + r.cell, 0), nNuc = rows.reduce((s, r) => s + r.nuc, 0);
-  $('#tx-summary').innerHTML = (neighbour ? '<span class="nb">Neighbouring cell</span> (yellow outline). <a href="#" id="sel-back">Back to the outlined cell</a><br>' : '')
-    + `<b>${nIn}</b> molecules inside the cell (<b>${rows.filter((r) => r.cell).length}</b> genes), <b>${nNuc}</b> inside the nucleus. Hover a column title for its meaning.`;
+function renderRows(rows) {
+  const nuc = st.mine.nuc, cell = st.mine.cell, sum = (k) => rows.reduce((s, r) => s + r[k], 0);
+  const [za, zb] = st.zsel || [], depth = !st.zsel ? '' : za === -Infinity ? ` Only depth ≤ ${zb.toFixed(1)} µm.`
+    : zb === Infinity ? ` Only depth ≥ ${za.toFixed(1)} µm.` : ` Only depth ${za.toFixed(1)}–${zb.toFixed(1)} µm.`;
+  $('#tx-summary').innerHTML = (cell || nuc
+    ? (cell ? `<b>${sum('cell')}</b> molecules inside your cell outline (<b>${rows.filter((r) => r.cell).length}</b> genes, ${flatArea(cell).toFixed(0)} µm²)` : 'No cell outline yet')
+      + (nuc ? `, <b>${sum('nuc')}</b> inside your nucleus outline (${flatArea(nuc).toFixed(0)} µm²).` : ', no nucleus outline yet.')
+    : 'Draw the nucleus and the cell (✎ under the image) to count the molecules inside them. Until then, the whole window.')
+    + depth + ' Hover a column title for its meaning.';
   const f = $('#tbl-filter').value.trim().toUpperCase();
   if (f) rows = rows.filter((r) => r.gene.includes(f));
-  rows.sort((a, b) => (tbl.sort === 'gene' ? a.gene.localeCompare(b.gene) * -tbl.dir : (a[tbl.sort] - b[tbl.sort]) * tbl.dir) || b.cell - a.cell);
+  rows.sort((a, b) => (tbl.sort === 'gene' ? a.gene.localeCompare(b.gene) * -tbl.dir : (a[tbl.sort] - b[tbl.sort]) * tbl.dir) || b.win - a.win);
   const cols = [['gene', 'gene', 'gene name'],
-    ['nuc', 'nucleus', 'molecules inside the nucleus outline'],
-    ['cell', 'cell', 'molecules inside the cell outline (includes the nucleus)'],
-    ['out', 'neighborhood', neighbour ? 'molecules within 3 µm outside its outline' : 'molecules in the window around the cell, outside its outline'],
-    ['ratio', 'vs tissue', 'how many times more molecules are inside the cell than expected from the average density of this gene over the whole tissue']];
+    ['nuc', 'nucleus', 'molecules inside your nucleus outline'],
+    ['cell', 'cell', 'molecules inside your cell outline (includes the nucleus)'],
+    ['out', '3 µm band', 'molecules within 3 µm outside your cell outline'],
+    ['win', 'window', 'molecules in the whole window shown'],
+    ['ratio', 'vs tissue', 'how many times more molecules are inside your cell outline than expected from the average density of this gene over the whole tissue']];
   $('#tbl thead').innerHTML = '<tr>' + cols.map(([k, l, tip]) => `<th data-k="${k}" title="${tip}" class="${k === tbl.sort ? 'sorted' : ''}">${l}${k === tbl.sort ? (tbl.dir < 0 ? ' ▾' : ' ▴') : ''}</th>`).join('') + '</tr>';
   const hl = new Map(st.hl.map((h) => [h.name, h.color]));
   const fr = (v) => (v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2));
   $('#tbl tbody').innerHTML = rows.slice(0, 300).map((r) => `<tr data-g="${r.gene}"><td>${hl.has(r.gene) ? `<i style="background:${hl.get(r.gene)}"></i>` : ''}${r.gene}</td>
-    <td>${r.nuc || ''}</td><td>${r.cell || ''}</td><td>${r.out || ''}</td><td>${r.cell ? fr(r.ratio) : ''}</td></tr>`).join('');
+    <td>${r.nuc || ''}</td><td>${r.cell || ''}</td><td>${r.out || ''}</td><td>${r.win || ''}</td><td>${r.cell ? fr(r.ratio) : ''}</td></tr>`).join('');
 }
 $('#tbl thead').addEventListener('click', (e) => {
   const th = e.target.closest('th'); if (!th) return;
@@ -660,10 +972,6 @@ $('#tbl thead').addEventListener('click', (e) => {
 });
 $('#tbl tbody').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-g]'); if (tr) toggleHl(tr.dataset.g); });
 $('#tbl-filter').oninput = renderTable;
-$('#tx-summary').addEventListener('click', (e) => {
-  if (e.target.id !== 'sel-back') return;
-  e.preventDefault(); st.sel = null; drawMain(); renderTable();
-});
 
 // ============================================================================ layout
 

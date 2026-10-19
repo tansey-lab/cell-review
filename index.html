@@ -20,8 +20,13 @@
 
   <main id="center">
     <div id="stage">
-      <canvas id="main"></canvas>
-      <span id="main-lab"></span>
+      <div id="cv-wrap">
+        <canvas id="main"></canvas>
+        <span id="main-lab"></span>
+      </div>
+      <div id="zbar" hidden title="Depth of the molecules in the section (top = larger z). Drag a handle to show only the molecules in an interval; drag inside it to move it; double-click to show all.">
+        <canvas id="zcv"></canvas>
+      </div>
       <button id="toggle-right" title="hide or show the side panel">⟩</button>
     </div>
     <div id="depth" hidden>
@@ -29,17 +34,22 @@
     </div>
     <div id="vigs"></div>
     <div class="row small" id="overlay-ctl">
-      <label><input type="checkbox" id="ov-outlines" checked> outlines</label>
+      <span class="draw-ctl">draw
+        <button id="draw-nuc" title="click points around the nucleus, then the first point (or Enter) to close; or press and trace. Afterwards drag the points to adjust.">✎ nucleus</button>
+        <button id="draw-cell" title="click points around the cell, then the first point (or Enter) to close; or press and trace. Afterwards drag the points to adjust.">✎ cell</button>
+        <button id="draw-clear" title="remove your nucleus and cell outlines for this cell">clear</button>
+      </span>
+      <label><input type="checkbox" id="ov-outlines" checked> marker and my outlines</label>
       <label><input type="checkbox" id="ov-hl" checked> highlighted transcripts</label>
       <label><input type="checkbox" id="ov-all"> all transcripts</label>
-      <label title="bigger dots lie higher in the section (larger z)"><input type="checkbox" id="ov-depth"> dot size by depth</label>
     </div>
   </main>
 
   <aside id="right">
     <section id="question">
-      <div class="q-title">Which label fits the outlined cell best?</div>
-      <div class="small q-hint">“Neither”, “can't tell” and “more than one cell” are valid answers.</div>
+      <div class="q-title">Which label fits the marked cell best?</div>
+      <div class="small q-hint">The dot marks the centre of its nucleus. Draw the nucleus and the cell (✎ under the image)
+        to count the transcripts inside them. “Neither”, “can't tell” and “more than one cell” are valid answers.</div>
       <div id="choices"></div>
       <input id="other" placeholder="if neither: what is it?" hidden>
       <div class="row conf"><span>confidence</span>
