@@ -5,5 +5,6 @@ window.REVIEW_CONFIG = {
   datasets: [
     // { id: 'lung1', name: 'Lung adenocarcinoma, set 1' },   // hidden; data kept in data/lung1
     { id: 'lung2', name: 'Lung adenocarcinoma, set 2' },
+    { id: 'lung3', name: 'Lung adenocarcinoma, set 3' },
   ],
 };

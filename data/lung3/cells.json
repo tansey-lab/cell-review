@@ -1,0 +1,114 @@
+{
+"cells": [
+{
+"id": "c4b95f1afa5",
+"A": "cancer-associated fibroblast",
+"B": "T cell"
+},
+{
+"id": "c5c9a33a1ae",
+"A": "plasma cell",
+"B": "B cell"
+},
+{
+"id": "c4bc6bf76ad",
+"A": "B cell",
+"B": "plasma cell"
+},
+{
+"id": "c6ca8dcbb6b",
+"A": "neutrophil",
+"B": "macrophage"
+},
+{
+"id": "c10b56a1c47",
+"A": "endothelial cell",
+"B": "fibroblast"
+},
+{
+"id": "c8453a0f666",
+"A": "B cell",
+"B": "plasma cell"
+},
+{
+"id": "c44e7419ddf",
+"A": "macrophage",
+"B": "T cell"
+},
+{
+"id": "cd02409bef2",
+"A": "cancer-associated fibroblast",
+"B": "plasma cell"
+},
+{
+"id": "cfc57277636",
+"A": "endothelial cell",
+"B": "fibroblast"
+},
+{
+"id": "c931a501839",
+"A": "plasma cell",
+"B": "B cell"
+},
+{
+"id": "cb70df3b215",
+"A": "T cell",
+"B": "macrophage"
+},
+{
+"id": "ca5d527ce95",
+"A": "plasma cell",
+"B": "B cell"
+},
+{
+"id": "c161f2e52c1",
+"A": "cancer-associated fibroblast",
+"B": "endothelial cell"
+},
+{
+"id": "c47227e9e5f",
+"A": "macrophage",
+"B": "dendritic cell"
+},
+{
+"id": "c21f9c685e5",
+"A": "endothelial cell",
+"B": "cancer-associated fibroblast"
+},
+{
+"id": "cd1f2d4ca38",
+"A": "T cell",
+"B": "cancer-associated fibroblast"
+},
+{
+"id": "cbd91b005b1",
+"A": "B cell",
+"B": "T cell"
+},
+{
+"id": "caad8632c68",
+"A": "B cell",
+"B": "plasma cell"
+},
+{
+"id": "c923adc8d7b",
+"A": "B cell",
+"B": "plasma cell"
+},
+{
+"id": "cf9f24b610c",
+"A": "T cell",
+"B": "cancer-associated fibroblast"
+},
+{
+"id": "c726ebcbbd2",
+"A": "alveolar type 2 cell (non-tumor)",
+"B": "tumor cell"
+},
+{
+"id": "cdafaf9b390",
+"A": "B cell",
+"B": "plasma cell"
+}
+]
+}
