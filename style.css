@@ -36,7 +36,11 @@ textarea { width: 100%; resize: vertical; }
 #stage { position: relative; flex: 1; min-height: 200px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 #cv-wrap { position: relative; flex: 1; align-self: stretch; min-width: 0; display: flex; align-items: center; justify-content: center; }
 #main { display: block; background: #000; border-radius: 4px; }
-#zbar { flex: 0 0 58px; align-self: center; margin-top: 36px; }   /* below the side-panel button */
+#zbar { flex: 0 0 auto; align-self: center; margin-top: 36px; display: flex; gap: 7px; }   /* below the side-panel button */
+#ztext { width: 104px; font-size: 11px; line-height: 1.35; color: var(--muted); }
+#ztext b { color: var(--text); font-weight: 600; }
+#ztext p { margin: 7px 0 0; }
+#he-note { margin-top: -2px; }
 #zcv { display: block; width: 58px; cursor: ns-resize; touch-action: none; border-radius: 4px; background: #0d0f11; }
 .draw-ctl { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
 .draw-ctl button { padding: 1px 7px; }

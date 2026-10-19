@@ -24,11 +24,18 @@
         <canvas id="main"></canvas>
         <span id="main-lab"></span>
       </div>
-      <div id="zbar" hidden title="Depth of the molecules in the section (top = larger z). Drag a handle to show only the molecules in an interval; drag inside it to move it; double-click to show all.">
-        <canvas id="zcv"></canvas>
+      <div id="zbar" hidden>
+        <canvas id="zcv" title="Drag a handle to show only the molecules in an interval; drag inside it to move it; double-click to show all."></canvas>
+        <div id="ztext">
+          <b>Depth</b> (z, µm) of the molecules in the section, top = higher. The bars count them; dots are the highlighted genes.
+          <p>Drag a handle to show and count only one depth interval; drag inside it to move it; double-click for all.</p>
+          <p>Cells can lie over each other at different depths: one depth layer may belong to a neighbouring cell.</p>
+        </div>
       </div>
       <button id="toggle-right" title="hide or show the side panel">⟩</button>
     </div>
+    <div id="he-note" class="small" hidden>The H&amp;E is a separate scan aligned to the Xenium images: in places it can be
+      shifted by a few µm relative to the transcripts and the other stains.</div>
     <div id="depth" hidden>
       <span>DAPI focal plane</span><input type="range" id="zr" min="0" max="0" value="0"><span id="zl"></span>
     </div>

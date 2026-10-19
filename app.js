@@ -172,6 +172,7 @@ async function drawMain() {
   const file = useZ ? `z${st.z}` : mode;
   const label = useZ ? `DAPI, focal plane ${st.z + 1} of ${d.n_planes}` : (MODS().find(([m]) => m === mode) || [, ''])[1];
   if (!PAN.has(mode)) st.lastFocus = mode;
+  $('#he-note').hidden = !['he', 'context', 'slide'].includes(mode);
   $('#main-lab').textContent = PAN.has(mode) ? `${label} · scroll to zoom, drag to move, double-click to reset`
     : st.draw ? `${label} · click points around the ${st.draw === 'nuc' ? 'nucleus' : 'cell'}, then the first point (or Enter) to close · or press and trace · Esc cancels`
     : st.mine.nuc || st.mine.cell ? `${label} · drag a point to move it · click an edge to add one · Alt-click a point to remove it`
