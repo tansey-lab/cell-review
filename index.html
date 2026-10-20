@@ -54,17 +54,26 @@
 
   <aside id="right">
     <section id="question">
-      <div class="q-title">Which label fits the marked cell best?</div>
-      <div class="small q-hint">The dot marks the centre of its nucleus. Draw the nucleus and the cell (✎ under the image)
-        to count the transcripts inside them. “Neither”, “can't tell” and “more than one cell” are valid answers.</div>
-      <div id="choices"></div>
-      <input id="other" placeholder="if neither: what is it?" hidden>
-      <div class="row conf"><span>confidence</span>
-        <label><input type="radio" name="conf" value="1"> low</label>
-        <label><input type="radio" name="conf" value="2"> medium</label>
-        <label><input type="radio" name="conf" value="3"> high</label>
+      <div id="step1" hidden>
+        <div class="q-title">1 · Which outline fits the marked cell?</div>
+        <div class="small q-hint">Two segmentations of the cell (solid line) and its nucleus (dashed line).
+          Show <span class="segv"><button data-v="1">1</button><button data-v="2">2</button><button data-v="both">both</button></span></div>
+        <div id="seg-choices"></div>
+        <div id="seg-draw" class="small" hidden>Draw the nucleus and the cell with ✎ under the image, or start from
+          <button id="from1">outline 1</button> <button id="from2">outline 2</button> and move its points.</div>
       </div>
-      <textarea id="comment" rows="2" placeholder="comment (optional)"></textarea>
+      <div id="step2">
+        <div class="q-title"><span id="step2-n"></span>Which label fits the marked cell best?</div>
+        <div class="small q-hint" id="q2-hint"></div>
+        <div id="choices"></div>
+        <input id="other" placeholder="if neither: what is it?" hidden>
+        <div class="row conf"><span>confidence</span>
+          <label><input type="radio" name="conf" value="1"> low</label>
+          <label><input type="radio" name="conf" value="2"> medium</label>
+          <label><input type="radio" name="conf" value="3"> high</label>
+        </div>
+        <textarea id="comment" rows="2" placeholder="comment (optional)"></textarea>
+      </div>
       <div class="row">
         <button id="prev">← previous</button>
         <button id="save" class="primary">save &amp; next →</button>

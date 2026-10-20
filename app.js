@@ -52,6 +52,7 @@ async function submit(a) {
   await rpc('review_submit', {
     p_token: TOKEN, p_dataset: st.dataset, p_cell: a.cell_id, p_choice: a.choice, p_option_a: a.option_a,
     p_option_b: a.option_b, p_confidence: a.confidence, p_other: a.other_label || '', p_comment: a.comment || '',
+    ...(a.seg_choice ? { p_seg: a.seg_choice } : {}),
   });
 }
 
@@ -75,18 +76,19 @@ async function openDataset(id) {
   st.answers = new Map((await myAnswers()).filter((a) => (!a.dataset || a.dataset === id) && current(a)).map((a) => [a.cell_id, a]));
   await pullMine(id);
   renderList();
-  const firstOpen = st.cells.findIndex((c) => !st.answers.has(c.id));
+  const firstOpen = st.cells.findIndex((c) => !isDone(c));
   await goTo(firstOpen >= 0 ? firstOpen : 0);
 }
 
+const isDone = (c) => { const a = st.answers.get(c.id); return !!a && (!c.seg || !!a.seg_choice); };
 function renderList() {
   $('#list').innerHTML = st.cells.map((c, i) => {
-    const a = st.answers.get(c.id);
-    return `<div class="item${i === st.idx ? ' cur' : ''}${a ? ' done' : ''}" data-i="${i}">
+    const a = st.answers.get(c.id), done = isDone(c);
+    return `<div class="item${i === st.idx ? ' cur' : ''}${done ? ' done' : ''}" data-i="${i}">
       <img loading="lazy" src="${base()}/images/${c.id}/thumb.jpg" alt="">
-      <span class="num">${i + 1}</span><span class="mark">${a ? '✓' : ''}</span></div>`;
+      <span class="num">${i + 1}</span><span class="mark">${done ? '✓' : a ? '½' : ''}</span></div>`;
   }).join('');
-  const n = st.answers.size, N = st.cells.length;
+  const n = st.cells.filter(isDone).length, N = st.cells.length;
   $('#progress span').textContent = `${n} of ${N} done`;
   $('#progress i').style.width = `${(100 * n) / Math.max(N, 1)}%`;
 }
@@ -106,6 +108,8 @@ async function goTo(i) {
   st.wv = { s: 1, x: 0, y: 0 };
   st.sv = null;                       // whole-slide view: fitted to the slide on first draw
   st.mine = loadMine()[c.id] || { nuc: null, cell: null };
+  st.segChoice = (st.answers.get(c.id) || {}).seg_choice || null;
+  st.segView = st.segChoice === '1' || st.segChoice === '2' ? st.segChoice : 'both';
   st.zsel = null;
   hover = vdrag = null;
   setDraw(null);
@@ -175,6 +179,8 @@ async function drawMain() {
   $('#he-note').hidden = !['he', 'context', 'slide'].includes(mode);
   $('#main-lab').textContent = PAN.has(mode) ? `${label} · scroll to zoom, drag to move, double-click to reset`
     : st.draw ? `${label} · click points around the ${st.draw === 'nuc' ? 'nucleus' : 'cell'}, then the first point (or Enter) to close · or press and trace · Esc cancels`
+    : d.seg && !st.segChoice ? `${label} · step 1: compare outlines 1 and 2 (show 1 / 2 / both, on the right)`
+    : !canDraw() ? `${label} · outline ${st.segChoice === 'both' ? '1 and 2' : st.segChoice} chosen`
     : st.mine.nuc || st.mine.cell ? `${label} · drag a point to move it · click an edge to add one · Alt-click a point to remove it`
     : `${label} · ✎ under the image: draw the nucleus and the cell`;
   $('#zl').textContent = useZ ? `plane ${st.z + 1} of ${d.n_planes}` : 'in-focus image';
@@ -398,6 +404,7 @@ function distToFlat(f, x, y) {                     // distance from a point to t
 }
 // the marked spot: centre of the cell's (largest) nucleus, else of its 10x outline, else of the window
 function markPoint(d) {
+  if (d.mark) return d.mark;
   if (!d._mark) {
     const polys = (d.nuclei && d.nuclei.length ? d.nuclei : d.outline) || [];
     const big = polys.reduce((b, p) => (!b || flatArea(p) > flatArea(b) ? p : b), null);
@@ -430,6 +437,39 @@ function drawMine(g, lw, handles = false) {       // the reviewer's outlines (ce
       g.lineWidth = 1.8 * px; g.strokeStyle = col; g.stroke(p);
     }
     if (!drawing.free) for (let i = 0; i < q.length; i += 2) handle(g, q[i], q[i + 1], col, px, i === 0 && q.length >= 6);
+  }
+}
+// Step 1: the two candidate segmentations (cell solid, nucleus dashed), colours drawn at random per cell
+const segCols = () => (parseInt(st.data.id.slice(-1), 16) % 2 ? ['#ffb340', '#5ee0a0'] : ['#5ee0a0', '#ffb340']);
+const canDraw = () => !(st.data && st.data.seg) || st.segChoice === 'neither';
+function shownSeg() {                              // indices of the candidates on the image
+  const d = st.data; if (!d || !d.seg) return [];
+  if (st.segChoice === 'neither') return [];
+  return st.segView === '1' ? [0] : st.segView === '2' ? [1] : [0, 1];
+}
+function activeOutline() {                         // the outline the table counts in
+  const d = st.data;
+  if (!d || !d.seg || st.segChoice === 'neither') return st.mine;
+  const k = st.segChoice === '1' ? 0 : st.segChoice === '2' ? 1 : st.segView === '2' ? 1 : st.segView === '1' || st.segChoice === 'both' ? 0 : -1;
+  return k < 0 ? { nuc: null, cell: null } : d.seg[k];
+}
+function drawSeg(g, lw) {
+  const d = st.data, px = (window.devicePixelRatio || 1) * lw, cols = segCols();
+  for (const k of shownSeg()) {
+    const o = d.seg[k], col = cols[k];
+    for (const [f, dash] of [[o.cell, []], [o.nuc, [4, 3]]]) {
+      if (!f) continue;
+      g.setLineDash(dash.map((v) => v * px));
+      g.lineWidth = 3.5 * px; g.strokeStyle = 'rgba(0,0,0,0.6)'; g.stroke(flatPath(f));
+      g.lineWidth = 1.8 * px; g.strokeStyle = col; g.stroke(flatPath(f));
+    }
+    g.setLineDash([]);
+    if (o.cell) {                                  // its number, at the topmost point
+      let t = 0; for (let i = 2; i < o.cell.length; i += 2) if (o.cell[i + 1] < o.cell[t + 1]) t = i;
+      const fs = 13 * px; g.font = `600 ${fs}px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif`;
+      g.textAlign = 'center'; g.textBaseline = 'bottom'; g.lineWidth = 3 * px; g.strokeStyle = 'rgba(0,0,0,0.8)';
+      g.strokeText(String(k + 1), o.cell[t], o.cell[t + 1] - 3 * px); g.fillStyle = col; g.fillText(String(k + 1), o.cell[t], o.cell[t + 1] - 3 * px);
+    }
   }
 }
 function handle(g, x, y, col, px, big) {           // a control point (big: the one under the pointer, or the first one)
@@ -485,7 +525,8 @@ function overlay(g, px, d) {
       g.fillStyle = col; g.fillRect(t.x[i] - r, t.y[i] - r, 2 * r, 2 * r);
     }
   }
-  if ($('#ov-outlines').checked || drawing) drawMine(g, lw, $('#ov-outlines').checked);
+  if ($('#ov-outlines').checked && d.seg) drawSeg(g, lw);
+  if (canDraw() && ($('#ov-outlines').checked || drawing)) drawMine(g, lw, $('#ov-outlines').checked);
   if ($('#ov-outlines').checked) marker(g, lw);
   g.restore();
 }
@@ -561,6 +602,7 @@ function finish(pts) {                             // close the outline being dr
 }
 function startDraw(kind) {
   if (!st.data) return;
+  if (!canDraw()) { $('#save-msg').textContent = 'Drawing is for step 1 “neither”: pick it first.'; return; }
   if (PAN.has(st.mod)) {                           // drawing is done on a focus image: back to the last one used
     st.mod = st.lastFocus || 'he';
     document.querySelectorAll('.vig').forEach((el) => el.classList.toggle('active', el.dataset.m === st.mod));
@@ -581,7 +623,7 @@ $('#main').addEventListener('pointerdown', (e) => {
     $('#main').setPointerCapture(e.pointerId);
     return;
   }
-  if (!$('#ov-outlines').checked) return;
+  if (!$('#ov-outlines').checked || !canDraw()) return;
   const v = nearVertex(x, y);
   if (v && (e.altKey || e.button === 2)) {         // remove a point (an outline keeps at least 3)
     const f = st.mine[v.kind];
@@ -618,7 +660,7 @@ $('#main').addEventListener('pointermove', (e) => {
     return;
   }
   if (drawing) { drawing.cursor = [x, y]; redraw(); return; }
-  const on = $('#ov-outlines').checked, v = on ? nearVertex(x, y) : null, ed = on && !v ? nearEdge(x, y) : null;
+  const on = $('#ov-outlines').checked && canDraw(), v = on ? nearVertex(x, y) : null, ed = on && !v ? nearEdge(x, y) : null;
   $('#main').style.cursor = v ? 'move' : ed ? 'copy' : '';
   const nh = v ? { kind: v.kind, i: v.i } : null;
   if (nh ? !hover || hover.kind !== nh.kind || hover.i !== nh.i : hover) { hover = nh; redraw(); }
@@ -687,7 +729,9 @@ function overlayWide(g, px, d, w) {
     g.translate(ox, oy);
     g.lineWidth = 1.5 * lw; g.strokeStyle = 'rgba(255,255,255,0.7)'; g.setLineDash([4 * lw, 3 * lw]);
     g.strokeRect(0, 0, size, size); g.setLineDash([]);
-    drawMine(g, lw); marker(g, lw);
+    if (d.seg) drawSeg(g, lw);
+    if (canDraw()) drawMine(g, lw);
+    marker(g, lw);
   }
   g.restore();
 }
@@ -782,8 +826,44 @@ $('#zcv').addEventListener('dblclick', () => { st.zsel = null; zChanged(); });
 
 // ============================================================================ question
 
+function renderSeg() {
+  const has = !!(st.data && st.data.seg), ch = st.segChoice;
+  $('#step1').hidden = !has;
+  $('#step2').classList.toggle('locked', has && !ch);
+  $('#step2-n').textContent = has ? '2 · ' : '';
+  $('#q2-hint').textContent = has
+    ? 'The table counts the transcripts inside the outline chosen in step 1. “Neither”, “can\'t tell” and “more than one cell” are valid answers.'
+    : 'The dot marks the centre of its nucleus. Draw the nucleus and the cell (✎ under the image) to count the transcripts inside them. “Neither”, “can\'t tell” and “more than one cell” are valid answers.';
+  if (!has) { ['#draw-nuc', '#draw-cell', '#draw-clear'].forEach((id) => { $(id).disabled = false; }); return; }
+  const opts = [['1', 'outline 1'], ['2', 'outline 2'], ['both', 'both fit'], ['neither', "neither: I'll draw it"]];
+  $('#seg-choices').innerHTML = opts.map(([v, lab], i) => `<label class="choice${ch === v ? ' on' : ''}">
+      <input type="radio" name="seg" value="${v}" ${ch === v ? 'checked' : ''}>
+      <span class="k">${i + 1}</span><span class="t">${lab}</span></label>`).join('');
+  document.querySelectorAll('.segv button').forEach((b) => b.classList.toggle('on', b.dataset.v === st.segView));
+  $('#seg-draw').hidden = ch !== 'neither';
+  ['#draw-nuc', '#draw-cell', '#draw-clear'].forEach((id) => { $(id).disabled = !canDraw(); });
+}
+$('#seg-choices').addEventListener('change', () => {
+  st.segChoice = (document.querySelector('input[name=seg]:checked') || {}).value || null;
+  if (st.segChoice === '1' || st.segChoice === '2') st.segView = st.segChoice;
+  if (st.draw && !canDraw()) setDraw(null);
+  renderSeg(); drawMain(); renderTable();
+});
+document.querySelector('.segv').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  st.segView = b.dataset.v; renderSeg(); drawMain(); renderTable();
+});
+function startFrom(k) {                            // a copy of a candidate, with fewer points, to adjust
+  const o = st.data.seg[k], cp = (f) => (f ? simplify(f.slice(), 0.12).map(r2) : null);
+  st.mine = { ...st.mine, nuc: cp(o.nuc), cell: cp(o.cell) };
+  outlinesChanged(); drawMain();
+}
+$('#from1').onclick = () => startFrom(0);
+$('#from2').onclick = () => startFrom(1);
+
 function renderQuestion(c) {
   const a = st.answers.get(c.id) || {};
+  renderSeg();
   const opts = [['A', c.A], ['B', c.B], ['neither', 'neither of these'], ['unsure', "can't tell"],
     ['multiple', 'more than one cell at the marked spot']];
   $('#choices').innerHTML = opts.map(([v, lab], i) => `<label class="choice${a.choice === v ? ' on' : ''}">
@@ -810,16 +890,18 @@ function otherBox(v) {
 async function save() {
   const c = st.cells[st.idx];
   const choice = (document.querySelector('input[name=choice]:checked') || {}).value;
-  if (!choice) { $('#save-msg').textContent = 'Pick an answer first.'; return; }
+  if (st.data && st.data.seg && !st.segChoice) { $('#save-msg').textContent = 'Answer step 1 (the outline) first.'; return; }
+  if (st.segChoice === 'neither' && !(st.mine.nuc || st.mine.cell)) { $('#save-msg').textContent = 'Step 1 “neither”: draw the nucleus or the cell first.'; return; }
+  if (!choice) { $('#save-msg').textContent = 'Pick a label first.'; return; }
   const conf = +((document.querySelector('input[name=conf]:checked') || {}).value || 0) || null;
-  const a = { cell_id: c.id, choice, option_a: c.A, option_b: c.B, confidence: conf,
+  const a = { cell_id: c.id, choice, option_a: c.A, option_b: c.B, confidence: conf, seg_choice: st.data && st.data.seg ? st.segChoice : null,
     other_label: choice === 'neither' || choice === 'multiple' ? $('#other').value.trim() : '', comment: $('#comment').value.trim() };
   $('#save').disabled = true; $('#save-msg').textContent = 'saving…';
   try {
     await submit(a);
     st.answers.set(c.id, { ...a, updated_at: new Date().toISOString() });
     renderList();
-    const next = st.cells.findIndex((x, j) => j > st.idx && !st.answers.has(x.id));
+    const next = st.cells.findIndex((x, j) => j > st.idx && !isDone(x));
     await goTo(next >= 0 ? next : Math.min(st.idx + 1, st.cells.length - 1));
   } catch (e) {
     $('#save-msg').textContent = `Could not save (${e.message}). Check your connection and try again.`;
@@ -839,7 +921,11 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); if (drawing.pts.length >= 6 && !drawing.free) finish(drawing.pts); return; }
     if (e.key === 'Backspace') { e.preventDefault(); drawing.pts.splice(-2); redraw(); return; }
   }
-  if ('12345'.includes(e.key)) { const r = document.querySelectorAll('input[name=choice]')[+e.key - 1]; if (r) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); } }
+  if ('12345'.includes(e.key)) {                   // step 1 first (while unanswered), then step 2
+    const name = st.data && st.data.seg && !st.segChoice ? 'seg' : 'choice';
+    const r = document.querySelectorAll(`input[name=${name}]`)[+e.key - 1];
+    if (r) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); }
+  }
   else if (e.key === 'Enter') save();
   else if (e.key === 'ArrowLeft') goTo(st.idx - 1);
   else if (e.key === 'ArrowRight') goTo(st.idx + 1);
@@ -926,7 +1012,7 @@ const tbl = { sort: 'cell', dir: -1 };
 // counts inside the reviewer's outlines (and the depth interval); before any outline, only the whole window
 function renderTable() {
   const d = st.data; if (!d) return;
-  const t = d.tx, acc = new Map(), nuc = st.mine.nuc, cell = st.mine.cell, BAND = 3;
+  const t = d.tx, acc = new Map(), o = activeOutline(), nuc = o.nuc, cell = o.cell, BAND = 3;
   for (let i = 0; i < t.g.length; i++) {
     if (t.z && !zOK(t.z[i])) continue;
     const gi = t.g[i];
@@ -943,23 +1029,27 @@ function renderTable() {
   renderRows(rows);
 }
 function renderRows(rows) {
-  const nuc = st.mine.nuc, cell = st.mine.cell, sum = (k) => rows.reduce((s, r) => s + r[k], 0);
+  const o = activeOutline(), nuc = o.nuc, cell = o.cell, sum = (k) => rows.reduce((s, r) => s + r[k], 0);
+  const k = o === st.mine ? 0 : st.data.seg.indexOf(o) + 1;
+  const ph = (part) => (k ? `the ${part} of outline ${k}` : `your ${part} outline`);
   const [za, zb] = st.zsel || [], depth = !st.zsel ? '' : za === -Infinity ? ` Only depth ≤ ${zb.toFixed(1)} µm.`
     : zb === Infinity ? ` Only depth ≥ ${za.toFixed(1)} µm.` : ` Only depth ${za.toFixed(1)}–${zb.toFixed(1)} µm.`;
   $('#tx-summary').innerHTML = (cell || nuc
-    ? (cell ? `<b>${sum('cell')}</b> molecules inside your cell outline (<b>${rows.filter((r) => r.cell).length}</b> genes, ${flatArea(cell).toFixed(0)} µm²)` : 'No cell outline yet')
-      + (nuc ? `, <b>${sum('nuc')}</b> inside your nucleus outline (${flatArea(nuc).toFixed(0)} µm²).` : ', no nucleus outline yet.')
-    : 'Draw the nucleus and the cell (✎ under the image) to count the molecules inside them. Until then, the whole window.')
+    ? (cell ? `<b>${sum('cell')}</b> molecules inside ${ph('cell')} (<b>${rows.filter((r) => r.cell).length}</b> genes, ${flatArea(cell).toFixed(0)} µm²)` : 'No cell outline yet')
+      + (nuc ? `, <b>${sum('nuc')}</b> inside ${ph('nucleus')} (${flatArea(nuc).toFixed(0)} µm²).` : ', no nucleus outline yet.')
+    : st.data.seg && st.segChoice !== 'neither'
+      ? 'Show outline 1 or 2 (step 1) to count the molecules inside it. Until then, the whole window.'
+      : 'Draw the nucleus and the cell (✎ under the image) to count the molecules inside them. Until then, the whole window.')
     + depth + ' Hover a column title for its meaning.';
   const f = $('#tbl-filter').value.trim().toUpperCase();
   if (f) rows = rows.filter((r) => r.gene.includes(f));
   rows.sort((a, b) => (tbl.sort === 'gene' ? a.gene.localeCompare(b.gene) * -tbl.dir : (a[tbl.sort] - b[tbl.sort]) * tbl.dir) || b.win - a.win);
   const cols = [['gene', 'gene', 'gene name'],
-    ['nuc', 'nucleus', 'molecules inside your nucleus outline'],
-    ['cell', 'cell', 'molecules inside your cell outline (includes the nucleus)'],
-    ['out', '3 µm band', 'molecules within 3 µm outside your cell outline'],
+    ['nuc', 'nucleus', `molecules inside ${ph('nucleus')}`],
+    ['cell', 'cell', `molecules inside ${ph('cell')} (includes the nucleus)`],
+    ['out', '3 µm band', `molecules within 3 µm outside ${ph('cell')}`],
     ['win', 'window', 'molecules in the whole window shown'],
-    ['ratio', 'vs tissue', 'how many times more molecules are inside your cell outline than expected from the average density of this gene over the whole tissue']];
+    ['ratio', 'vs tissue', `how many times more molecules are inside ${ph('cell')} than expected from the average density of this gene over the whole tissue`]];
   $('#tbl thead').innerHTML = '<tr>' + cols.map(([k, l, tip]) => `<th data-k="${k}" title="${tip}" class="${k === tbl.sort ? 'sorted' : ''}">${l}${k === tbl.sort ? (tbl.dir < 0 ? ' ▾' : ' ▴') : ''}</th>`).join('') + '</tr>';
   const hl = new Map(st.hl.map((h) => [h.name, h.color]));
   const fr = (v) => (v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2));

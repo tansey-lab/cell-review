@@ -70,6 +70,13 @@ textarea { width: 100%; resize: vertical; }
 .choice .t { font-size: 14px; }
 .choice.on { border-color: var(--accent); background: rgba(255,79,216,.08); }
 #other { width: 100%; margin-top: 6px; }
+#step1 { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+#seg-choices { display: flex; flex-direction: column; gap: 5px; }
+.segv button { padding: 0 7px; margin-left: 2px; }
+.segv button.on { border-color: var(--accent); background: rgba(255,79,216,.15); }
+#seg-draw { margin-top: 6px; }
+#seg-draw button { padding: 0 6px; }
+#step2.locked { opacity: .4; pointer-events: none; }
 .conf { color: var(--muted); }
 #save-msg { min-height: 16px; }
 
