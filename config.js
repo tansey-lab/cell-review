@@ -7,5 +7,6 @@ window.REVIEW_CONFIG = {
     // { id: 'lung2', name: 'Lung adenocarcinoma, set 2' },   // hidden; data kept in data/lung2
     { id: 'lung3', name: 'Lung adenocarcinoma, set 3' },
     { id: 'lung4', name: 'Lung adenocarcinoma, set 4' },
+    { id: 'crc1', name: 'Colorectal cancer, set 1' },
   ],
 };

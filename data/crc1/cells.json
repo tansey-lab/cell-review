@@ -1,0 +1,389 @@
+{
+"cells": [
+{
+"id": "cb0d30ba261",
+"A": "epithelial cell",
+"B": "stromal cell"
+},
+{
+"id": "cdfb17e3255",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c96e3774369",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c71ad56f296",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c66b0f90f4b",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c25e7f2529b",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "ccec94bb513",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "ceeb823d276",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c4197350960",
+"A": "immune cell",
+"B": "epithelial cell"
+},
+{
+"id": "c2e2ba1876b",
+"A": "epithelial cell",
+"B": "immune cell"
+},
+{
+"id": "c3e8d71c53c",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "caa3cf5db4b",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c1af1799d88",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c648c9508b3",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c4c1e65a99c",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "cccdfd5b7bc",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "ce8344fce0e",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "cdc9000a0d6",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "cf4acd68a82",
+"A": "immune cell",
+"B": "epithelial cell"
+},
+{
+"id": "c73f9007c15",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "caadd04d7bd",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c4483d1fb63",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "ced1d52ffca",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c7840985cfe",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "cd604211473",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "ce4b7fb1a7a",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c4a81753461",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c190332225f",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c12b07053bb",
+"A": "stromal cell",
+"B": "epithelial cell"
+},
+{
+"id": "cf4105a6190",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "cc41b101228",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c52b34016a1",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "cad73c6f1f9",
+"A": "stromal cell",
+"B": "epithelial cell"
+},
+{
+"id": "c100f44a19d",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c969ae1fe21",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c623be0ca6a",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c56ca9248e6",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c36e5e4a254",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c1e260ae060",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c33c2d3f5f2",
+"A": "immune cell",
+"B": "epithelial cell"
+},
+{
+"id": "c13fcdb5d03",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "cb51c7cd7ab",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c0c5631cf62",
+"A": "immune cell",
+"B": "epithelial cell"
+},
+{
+"id": "cdc2aecd04d",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "cec5d7aa422",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c93a44943f6",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "cc5fa95ab2a",
+"A": "epithelial cell",
+"B": "immune cell"
+},
+{
+"id": "c444ba8fa8c",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c22a3fda09c",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "cddfb3a16b9",
+"A": "epithelial cell",
+"B": "immune cell"
+},
+{
+"id": "cb0ca9a41e6",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c25944e904f",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c670a617d0f",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "ce7a6721c00",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c449975a2cd",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c94bb79ba3e",
+"A": "epithelial cell",
+"B": "immune cell"
+},
+{
+"id": "ccd5264f54a",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c05afb0c54b",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "cd6d9725501",
+"A": "epithelial cell",
+"B": "stromal cell"
+},
+{
+"id": "c3081db6ccb",
+"A": "epithelial cell",
+"B": "stromal cell"
+},
+{
+"id": "c7d8c22fa6c",
+"A": "stromal cell",
+"B": "epithelial cell"
+},
+{
+"id": "c9804e0112f",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c13698f9fe8",
+"A": "immune cell",
+"B": "epithelial cell"
+},
+{
+"id": "cd6f3a38232",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "cd64e9918c7",
+"A": "epithelial cell",
+"B": "stromal cell"
+},
+{
+"id": "cb67076ae12",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c6ddeec97c9",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c08bc5b54bc",
+"A": "stromal cell",
+"B": "epithelial cell"
+},
+{
+"id": "c480d57e1e9",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c33e65bded7",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "cd82559441c",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "cb258b9ed42",
+"A": "stromal cell",
+"B": "epithelial cell"
+},
+{
+"id": "c0769266636",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c687ec281b1",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "c863c238bc1",
+"A": "immune cell",
+"B": "stromal cell"
+},
+{
+"id": "cf6d50468aa",
+"A": "stromal cell",
+"B": "immune cell"
+},
+{
+"id": "c96d845b3ec",
+"A": "immune cell",
+"B": "stromal cell"
+}
+]
+}

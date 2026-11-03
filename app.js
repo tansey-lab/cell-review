@@ -125,7 +125,7 @@ const PAN = new Set(['context', 'slide']);           // views that zoom and drag
 const slideId = () => (st.data && st.data.slide && st.data.slide.id) || '';
 const slideBase = () => `data/slides/${slideId()}`;
 const MODS = () => [['he', 'H&E'], ['context', 'wider view'], ...(slideId() ? [['slide', 'whole slide']] : []),
-  ['composite', 'stains'], ...st.data.channels.map((n, i) => [`c${i}`, n])];
+  ...(st.data.channels.length ? [['composite', 'stains'], ...st.data.channels.map((n, i) => [`c${i}`, n])] : [])];
 
 function renderVignettes() {
   const c = st.cells[st.idx];
@@ -449,7 +449,7 @@ function shownSeg() {                              // indices of the candidates 
 }
 function activeOutline() {                         // the outline the table counts in
   const d = st.data;
-  if (!d || !d.seg || st.segChoice === 'neither') return st.mine;
+  if (!d || !d.seg || st.segChoice === 'neither') return (!d || d.seg || st.mine.nuc || st.mine.cell || !d.ref) ? st.mine : d.ref;
   const k = st.segChoice === '1' ? 0 : st.segChoice === '2' ? 1 : st.segView === '2' ? 1 : st.segView === '1' || st.segChoice === 'both' ? 0 : -1;
   return k < 0 ? { nuc: null, cell: null } : d.seg[k];
 }
@@ -471,6 +471,16 @@ function drawSeg(g, lw) {
       g.strokeText(String(k + 1), o.cell[t], o.cell[t + 1] - 3 * px); g.fillStyle = col; g.fillText(String(k + 1), o.cell[t], o.cell[t + 1] - 3 * px);
     }
   }
+}
+function drawRef(g, lw) {                          // the set's reference segmentation (no outline question)
+  const d = st.data, px = (window.devicePixelRatio || 1) * lw;
+  for (const [f, dash] of [[d.ref.cell, []], [d.ref.nuc, [4, 3]]]) {
+    if (!f) continue;
+    g.setLineDash(dash.map((v) => v * px));
+    g.lineWidth = 3.2 * px; g.strokeStyle = 'rgba(0,0,0,0.6)'; g.stroke(flatPath(f));
+    g.lineWidth = 1.6 * px; g.strokeStyle = 'rgba(255,255,255,0.95)'; g.stroke(flatPath(f));
+  }
+  g.setLineDash([]);
 }
 function handle(g, x, y, col, px, big) {           // a control point (big: the one under the pointer, or the first one)
   const s = (big ? 5 : 3.5) * px;
@@ -514,6 +524,8 @@ function overlay(g, px, d) {
   g.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
   const t = d.tx, hl = new Map(st.hl.map((h) => [h.name, h.color]));
   const r = Math.max(1.6, 2.4 * px / 700) / k, show = (i) => !t.z || zOK(t.z[i]);
+  if (d.bin) { drawBins(g, t.x, t.y, t.g, t.n, 1, d.genes, d.bin, lw, hl, r); }   // Visium HD: 2 µm bins with counts
+  else {
   if ($('#ov-all').checked) {
     g.fillStyle = 'rgba(230,230,230,0.75)';
     for (let i = 0; i < t.x.length; i++) if (show(i) && !hl.has(d.genes[t.g[i]])) g.fillRect(t.x[i] - r / 2, t.y[i] - r / 2, r, r);
@@ -525,7 +537,9 @@ function overlay(g, px, d) {
       g.fillStyle = col; g.fillRect(t.x[i] - r, t.y[i] - r, 2 * r, 2 * r);
     }
   }
+  }
   if ($('#ov-outlines').checked && d.seg) drawSeg(g, lw);
+  if ($('#ov-outlines').checked && d.ref && !d.seg) drawRef(g, lw);
   if (canDraw() && ($('#ov-outlines').checked || drawing)) drawMine(g, lw, $('#ov-outlines').checked);
   if ($('#ov-outlines').checked) marker(g, lw);
   g.restore();
@@ -688,6 +702,35 @@ $('#main').addEventListener('contextmenu', (e) => {
   if (focusReady() && $('#ov-outlines').checked && nearVertex(...windowUm(e))) e.preventDefault();
 });
 
+// Visium HD: counts per (2 µm bin, gene). Each count is drawn as one dot at a fixed pseudo-random spot inside its bin
+// (seeded by the bin's position and gene, so dots do not move between redraws): several genes in a bin show as a mix of
+// dots and the count as their number. Positions inside a bin are not data. xs, ys in µm * scale; counts n; r: dot size.
+function binRand(a, b, c) {                        // deterministic number in [0, 1) from three integers
+  let h = (Math.imul(a | 0, 73856093) ^ Math.imul(b | 0, 19349663) ^ Math.imul(c | 0, 83492791)) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0; h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function drawBins(g, xs, ys, gs, n, scale, genes, B, lw, hl, r) {
+  const len = xs.length;
+  const spots = (i, f) => {                        // f(x, y) for each count of row i
+    const x0 = xs[i] / scale - B / 2, y0 = ys[i] / scale - B / 2, kx = Math.round(xs[i] / scale * 10), ky = Math.round(ys[i] / scale * 10);
+    for (let j = 0; j < n[i]; j++) f(x0 + B * binRand(kx, ky, gs[i] * 64 + 2 * j), y0 + B * binRand(ky, kx, gs[i] * 64 + 2 * j + 1));
+  };
+  if ($('#ov-all').checked) {
+    g.fillStyle = 'rgba(230,230,230,0.75)';
+    for (let i = 0; i < len; i++) if (!hl.has(genes[gs[i]])) spots(i, (x, y) => g.fillRect(x - r / 2, y - r / 2, r, r));
+  }
+  if ($('#ov-hl').checked || $('#ov-all').checked) {
+    for (let i = 0; i < len; i++) {
+      const col = hl.get(genes[gs[i]]); if (!col) continue;
+      spots(i, (x, y) => {
+        g.fillStyle = '#000'; g.fillRect(x - r - lw, y - r - lw, 2 * r + 2 * lw, 2 * r + 2 * lw);
+        g.fillStyle = col; g.fillRect(x - r, y - r, 2 * r, 2 * r);
+      });
+    }
+  }
+}
+
 // wider view: every transcript of the extended neighborhood, loaded once per cell
 // (uint32 n, then uint16 x, y in 0.01 µm, uint16 gene, uint16 z in 0.01 µm)
 const wideCache = new Map();
@@ -711,7 +754,9 @@ function overlayWide(g, px, d, w) {
   if (w) {
     const hl = new Map(st.hl.map((h) => [h.name, h.color]));
     const col = W.genes.map((name) => hl.get(name) || null);
-    const r = Math.max(1.2, 1.8 * px / 700) / k, show = (i) => !w.z || zOK(w.z[i] / 100);
+    const r = Math.max(1.2, 1.8 * px / 700) / k, show = (i) => !w.z || W.binned || zOK(w.z[i] / 100);
+    if (W.binned) drawBins(g, w.x, w.y, w.g, w.z, 100, W.genes, d.bin, lw, hl, r);   // 4th array = counts
+    else {
     if ($('#ov-all').checked) {
       g.fillStyle = 'rgba(230,230,230,0.6)';
       for (let i = 0; i < w.n; i++) if (show(i) && !col[w.g[i]]) g.fillRect(w.x[i] / 100 - r / 2, w.y[i] / 100 - r / 2, r, r);
@@ -724,12 +769,14 @@ function overlayWide(g, px, d, w) {
         g.fillStyle = c; g.fillRect(x - q, y - q, 2 * q, 2 * q);
       }
     }
+    }
   }
   if ($('#ov-outlines').checked) {
     g.translate(ox, oy);
     g.lineWidth = 1.5 * lw; g.strokeStyle = 'rgba(255,255,255,0.7)'; g.setLineDash([4 * lw, 3 * lw]);
     g.strokeRect(0, 0, size, size); g.setLineDash([]);
     if (d.seg) drawSeg(g, lw);
+    if (d.ref && !d.seg) drawRef(g, lw);
     if (canDraw()) drawMine(g, lw);
     marker(g, lw);
   }
@@ -1018,10 +1065,11 @@ function renderTable() {
     const gi = t.g[i];
     let a = acc.get(gi);
     if (!a) { a = { gi, gene: d.genes[gi], ctl: d.gene_category[gi].indexOf('gene') < 0, nuc: 0, cell: 0, out: 0, win: 0 }; acc.set(gi, a); }
-    a.win++;
+    const c = t.n ? t.n[i] : 1;                      // Visium HD: a bin counts with its count (bin centre inside)
+    a.win += c;
     const x = t.x[i], y = t.y[i];
-    if (nuc && inFlat(nuc, x, y)) a.nuc++;
-    if (cell) { if (inFlat(cell, x, y)) a.cell++; else if (distToFlat(cell, x, y) <= BAND) a.out++; }
+    if (nuc && inFlat(nuc, x, y)) a.nuc += c;
+    if (cell) { if (inFlat(cell, x, y)) a.cell += c; else if (distToFlat(cell, x, y) <= BAND) a.out += c; }
   }
   const rows = [...acc.values()].filter((r) => !r.ctl), area = cell ? flatArea(cell) : 0;
   // vs tissue: molecules inside the cell outline / molecules expected in that area at the tissue-wide density
@@ -1030,8 +1078,8 @@ function renderTable() {
 }
 function renderRows(rows) {
   const o = activeOutline(), nuc = o.nuc, cell = o.cell, sum = (k) => rows.reduce((s, r) => s + r[k], 0);
-  const k = o === st.mine ? 0 : st.data.seg.indexOf(o) + 1;
-  const ph = (part) => (k ? `the ${part} of outline ${k}` : `your ${part} outline`);
+  const isRef = o === st.data.ref, k = o === st.mine || isRef ? 0 : st.data.seg.indexOf(o) + 1;
+  const ph = (part) => (isRef ? `the white ${part} outline` : k ? `the ${part} of outline ${k}` : `your ${part} outline`);
   const [za, zb] = st.zsel || [], depth = !st.zsel ? '' : za === -Infinity ? ` Only depth ≤ ${zb.toFixed(1)} µm.`
     : zb === Infinity ? ` Only depth ≥ ${za.toFixed(1)} µm.` : ` Only depth ${za.toFixed(1)}–${zb.toFixed(1)} µm.`;
   $('#tx-summary').innerHTML = (cell || nuc
